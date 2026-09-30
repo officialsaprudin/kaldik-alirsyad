@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Kaldik Pro - Kalender Pendidikan Madrasah & Sekolah</title>
   <link rel="icon" type="image/png" href="poto.png">
-  
   <!-- Google Fonts: Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1135,6 +1134,12 @@
     }
 
     function renderSchoolIdentity() {
+      // Sembunyikan badge Mock Preview jika is_preview bernilai false
+      const badge = document.getElementById('preview-badge');
+      if (badge) {
+        badge.classList.toggle('hidden', !is_preview);
+      }
+
       const sc = AppState.school;
       const subtitle = document.getElementById('school-name-subtitle');
       if (subtitle) subtitle.innerText = `${sc.name} • T.A. ${sc.year}`;
@@ -2606,6 +2611,11 @@
         showToast("Terjadi kesalahan saat memulihkan data", "error");
       }
     }
+
+    // Inisialisasi awal aplikasi saat pertama kali dimuat
+    renderSchoolIdentity();
+    renderLegend();
+    renderCalendar();
   </script>
 </body>
 </html>
