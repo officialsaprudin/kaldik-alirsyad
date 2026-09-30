@@ -1,0 +1,2052 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kaldik Pro - Kalender Pendidikan Madrasah & Sekolah</title>
+  <link rel="icon" type="image/png" href="poto.png">
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Supabase JS SDK v2 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+              800: '#065f46',
+              900: '#064e3b',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    @media print {
+      body {
+        background: white !important;
+        color: black !important;
+        font-size: 10px !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .print-only {
+        display: block !important;
+      }
+      .page-break {
+        page-break-after: always;
+      }
+      .shadow-sm, .shadow, .shadow-md, .shadow-lg, .shadow-xl {
+        box-shadow: none !important;
+      }
+      .border {
+        border-color: #cbd5e1 !important;
+      }
+
+      /* Dinamis Layout Grid Cetak Berdasarkan Orientasi & Semester */
+      body.print-mode-landscape #months-grid-container {
+        display: grid !important;
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        gap: 6px !important;
+      }
+      body.print-mode-landscape.print-scope-full #months-grid-container {
+        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+        gap: 4px !important;
+      }
+
+      body.print-mode-portrait #months-grid-container {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 6px !important;
+      }
+      body.print-mode-portrait.print-scope-full #months-grid-container {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        gap: 4px !important;
+      }
+
+      /* Skala sel kalender cetak agar pas 1 halaman A4 */
+      .print-mode-landscape.print-scope-full #months-grid-container .h-7,
+      .print-mode-portrait.print-scope-full #months-grid-container .h-7 {
+        height: 1.35rem !important;
+        font-size: 9px !important;
+      }
+    }
+
+    /* Target injeksi orientasi halaman dinamis */
+  </style>
+  <style id="dynamic-print-page-style">
+    @media print {
+      @page {
+        size: A4 landscape;
+        margin: 6mm 8mm 6mm 8mm;
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen antialiased flex flex-col">
+
+  <header class="no-print bg-white border-b border-slate-200 sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <!-- Brand & Context -->
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-md shadow-emerald-500/20">
+            <i data-lucide="calendar-range" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="font-extrabold text-base tracking-tight text-slate-900">KaldikPro</span>
+              <span id="preview-badge" class="px-2 py-0.5 text-[10px] font-semibold bg-amber-100 text-amber-800 rounded-full border border-amber-200">
+                Mock Preview
+              </span>
+            </div>
+            <p class="text-xs text-slate-500" id="school-name-subtitle">Memuat identitas sekolah...</p>
+          </div>
+        </div>
+
+        <!-- Central Academic Year & Semester Selector -->
+        <div class="hidden md:flex items-center space-x-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+          <button id="btn-sem-gasal" onclick="switchSemester('gasal')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all shadow-sm bg-white text-slate-800">
+            Semester Gasal (Jul - Des)
+          </button>
+          <button id="btn-sem-genap" onclick="switchSemester('genap')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all text-slate-600 hover:text-slate-900">
+            Semester Genap (Jan - Jun)
+          </button>
+          <button id="btn-sem-full" onclick="switchSemester('full')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all text-slate-600 hover:text-slate-900">
+            1 Tahun Penuh
+          </button>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex items-center space-x-2">
+          <button onclick="openSchoolModal()" class="px-3 py-1.5 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg flex items-center space-x-1.5 transition">
+            <i data-lucide="building-2" class="w-4 h-4 text-slate-500"></i>
+            <span class="hidden sm:inline">KOP & Profil</span>
+          </button>
+          <button onclick="openBackupModal()" class="px-3 py-1.5 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg flex items-center space-x-1.5 transition">
+            <i data-lucide="database-backup" class="w-4 h-4 text-emerald-600"></i>
+            <span class="hidden sm:inline">Backup & JSON</span>
+          </button>
+          <button onclick="openEventModal()" class="px-3 py-1.5 text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg flex items-center space-x-1.5 shadow-sm transition">
+            <i data-lucide="calendar-plus" class="w-4 h-4"></i>
+            <span class="hidden sm:inline">Tambah Agenda</span>
+          </button>
+          <button onclick="openExportModal()" class="px-3 py-1.5 text-xs font-medium text-slate-800 bg-amber-400 hover:bg-amber-500 rounded-lg flex items-center space-x-1.5 shadow-sm transition">
+            <i data-lucide="printer" class="w-4 h-4"></i>
+            <span>Export A4 PDF</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    
+    <!-- Mobile Tab Selector (Visible on small screens) -->
+    <div class="no-print md:hidden mb-4 grid grid-cols-3 gap-1 bg-slate-200 p-1 rounded-xl">
+      <button onclick="switchSemester('gasal')" class="tab-mob-gasal py-1.5 text-xs font-semibold rounded-lg text-center bg-white text-slate-900">Gasal</button>
+      <button onclick="switchSemester('genap')" class="tab-mob-genap py-1.5 text-xs font-semibold rounded-lg text-center text-slate-600">Genap</button>
+      <button onclick="switchSemester('full')" class="tab-mob-full py-1.5 text-xs font-semibold rounded-lg text-center text-slate-600">1 Tahun</button>
+    </div>
+
+    <!-- KPI / Analytic Cards (Rencana Pekan Efektif & Hari Efektif) -->
+    <section class="no-print grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-500">Tahun Ajaran</p>
+          <h4 id="stat-academic-year" class="text-lg font-bold text-slate-800">2026/2027</h4>
+          <span id="stat-semester-label" class="text-[11px] font-semibold text-emerald-600">Gasal (Juli - Des)</span>
+        </div>
+        <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+          <i data-lucide="graduation-cap" class="w-5 h-5"></i>
+        </div>
+      </div>
+
+      <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-500">Hari Efektif Belajar</p>
+          <h4 id="stat-heb" class="text-2xl font-bold text-slate-900">118</h4>
+          <span class="text-[11px] text-slate-400">Total hari KBM formal</span>
+        </div>
+        <div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+          <i data-lucide="book-open-check" class="w-5 h-5"></i>
+        </div>
+      </div>
+
+      <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-500">Pekan Efektif (RPE)</p>
+          <h4 id="stat-pekan" class="text-2xl font-bold text-slate-900">20</h4>
+          <span class="text-[11px] text-slate-400">Pekan pembelajaran aktif</span>
+        </div>
+        <div class="w-10 h-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+          <i data-lucide="clock" class="w-5 h-5"></i>
+        </div>
+      </div>
+
+      <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-500">Total Libur & Khusus</p>
+          <h4 id="stat-libur" class="text-2xl font-bold text-rose-600">24</h4>
+          <span class="text-[11px] text-slate-400">Libur semester & nasional</span>
+        </div>
+        <div class="w-10 h-10 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+          <i data-lucide="palmtree" class="w-5 h-5"></i>
+        </div>
+      </div>
+    </section>
+
+    <div id="print-header" class="hidden print:block mb-4 border-b-2 border-slate-900 pb-3 text-center">
+      <div class="flex items-center justify-between px-2">
+        <div class="w-16 h-16 flex items-center justify-center border border-dashed border-slate-300 rounded" id="kop-logo-container">
+          <i data-lucide="school" class="w-10 h-10 text-slate-800"></i>
+        </div>
+        <div class="flex-1 text-center px-4">
+          <h2 id="kop-nama-yayasan" class="text-xs font-bold uppercase tracking-wider text-slate-700">KEMENTERIAN AGAMA REPUBLIK INDONESIA</h2>
+          <h1 id="kop-nama-sekolah" class="text-lg font-extrabold uppercase text-slate-900 leading-tight">MADRASAH ALIYAH NEGERI 1 MODEL</h1>
+          <p id="kop-alamat" class="text-[10px] text-slate-600">Jl. Pendidikan No. 45 Telp. (0511) 7891234 Kota Banjarmasin - NPSN: 30304561</p>
+          <div class="mt-1 inline-block border-t border-slate-800 px-6 pt-0.5">
+            <span class="text-[11px] font-bold tracking-wide uppercase" id="kop-doc-title">KALENDER PENDIDIKAN TAHUN AJARAN 2026/2027</span>
+          </div>
+        </div>
+        <div class="w-16 h-16 flex items-center justify-center border border-dashed border-slate-300 rounded text-slate-400 text-[10px] text-center">
+          Kemenag / Kemdikbud
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content Grid: Calendar + Agenda Sidebar -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      
+      <div class="lg:col-span-8 print:w-full space-y-6">
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm print:p-0 print:border-none print:shadow-none">
+          <div class="no-print flex items-center justify-between mb-4">
+            <h3 class="text-sm font-bold text-slate-800 flex items-center space-x-2">
+              <i data-lucide="calendar" class="w-4 h-4 text-emerald-600"></i>
+              <span id="calendar-view-heading">Grid Kalender Semester Gasal</span>
+            </h3>
+            <div class="text-xs text-slate-500 flex items-center space-x-1">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
+              <span>Klik tanggal untuk melihat / menambah agenda</span>
+            </div>
+          </div>
+
+          <!-- The Month Grids Container -->
+          <div id="months-grid-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 print:grid-cols-3 print:gap-2">
+            <!-- Dynamically populated by JS renderEngine -->
+          </div>
+        </div>
+
+        <div class="print-only mt-4 pt-2 border-t border-slate-300 text-[10px]">
+          <div class="grid grid-cols-3 gap-4 mb-3">
+            <div class="col-span-2">
+              <h5 class="font-bold uppercase text-[9px] mb-1">Catatan Khusus Madrasah / Sekolah:</h5>
+              <ol class="list-decimal pl-4 space-y-0.5 text-[9px] text-slate-700" id="print-notes-list">
+                <li>Hari Efektif Belajar (HEB) tidak termasuk hari libur resmi, jeda tengah semester, dan libur keagamaan.</li>
+                <li>Jadwal Asesmen/Ujian dapat disesuaikan dengan edaran resmi dinas pendidikan/Kemenag wilayah setempat.</li>
+                <li>Pekan Efektif Belajar semester gasal minimal 18 pekan, semester genap minimal 16 pekan.</li>
+              </ol>
+            </div>
+            <div class="text-center">
+              <p id="print-kota-tanggal">Banjarmasin, 15 Juli 2026</p>
+              <p class="font-semibold" id="print-jabatan-kepala">Kepala Madrasah,</p>
+              <div class="h-14"></div>
+              <p class="font-bold underline uppercase" id="print-nama-kepala">Dr. H. Ahmad Fauzi, M.Pd</p>
+              <p id="print-nip-kepala">NIP. 19780512 200312 1 004</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="lg:col-span-4 no-print space-y-6">
+        
+        <!-- Legend Color Coding (Kaldik Categories) -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+          <div class="flex items-center justify-between mb-3">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center space-x-1.5">
+              <i data-lucide="palette" class="w-4 h-4 text-emerald-600"></i>
+              <span>Kategori & Kode Warna</span>
+            </h4>
+            <button onclick="openCategoryModal()" class="px-2 py-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200 transition flex items-center space-x-1">
+              <i data-lucide="sliders-horizontal" class="w-3 h-3"></i>
+              <span>Kelola & Palet</span>
+            </button>
+          </div>
+
+          <div class="space-y-2 text-xs" id="legend-list">
+            <!-- Populated dynamically by JS -->
+          </div>
+
+          <button onclick="openCategoryModal(true)" class="mt-3.5 w-full py-2 px-3 border border-dashed border-slate-300 hover:border-emerald-500 hover:bg-emerald-50/40 text-slate-600 hover:text-emerald-700 rounded-xl text-xs font-semibold flex items-center justify-center space-x-1.5 transition">
+            <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
+            <span>Tambah Kategori Baru</span>
+          </button>
+        </div>
+
+        <!-- Agenda List on Current Scope -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+          <div class="flex items-center justify-between mb-3">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center space-x-1.5">
+              <i data-lucide="list-todo" class="w-4 h-4 text-emerald-600"></i>
+              <span>Daftar Agenda Semester Ini</span>
+            </h4>
+            <span id="agenda-count-badge" class="px-2 py-0.5 text-[10px] font-semibold bg-slate-100 text-slate-600 rounded-full">0 Agenda</span>
+          </div>
+
+          <div id="agenda-items-container" class="space-y-2.5 max-h-[460px] overflow-y-auto pr-1">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+      </aside>
+    </div>
+
+    <div class="print-only mt-4 page-break">
+      <h3 class="text-xs font-bold uppercase border-b border-slate-800 pb-1 mb-2">Rincian Kegiatan & Agenda Pendidikan</h3>
+      <table class="w-full border-collapse text-[9.5px]">
+        <thead>
+          <tr class="bg-slate-100 text-left">
+            <th class="border border-slate-400 p-1.5 w-8 text-center">No</th>
+            <th class="border border-slate-400 p-1.5 w-32">Rentang Tanggal</th>
+            <th class="border border-slate-400 p-1.5 w-28">Kategori</th>
+            <th class="border border-slate-400 p-1.5">Nama Kegiatan / Agenda Sekolah</th>
+            <th class="border border-slate-400 p-1.5 w-36">Keterangan</th>
+          </tr>
+        </thead>
+        <tbody id="print-agenda-table-body">
+          <!-- Populated by JS for printable table -->
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+
+  
+  <!-- MODAL: Tambah/Edit Agenda -->
+  <div id="modal-event" class="no-print fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden transition-all transform border border-slate-100">
+      <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+        <h3 id="modal-event-title" class="font-bold text-sm text-slate-800 flex items-center space-x-2">
+          <i data-lucide="calendar-plus" class="w-4 h-4 text-emerald-600"></i>
+          <span>Tambah Agenda Kaldik</span>
+        </h3>
+        <button onclick="closeEventModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="form-event" onsubmit="handleEventSubmit(event)" class="p-6 space-y-4 text-xs">
+        <input type="hidden" id="event-id">
+
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Nama Agenda / Kegiatan *</label>
+          <input type="text" id="event-title" required placeholder="Contoh: Matsama / Penilaian Tengah Semester" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Tanggal Mulai *</label>
+            <input type="date" id="event-start-date" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Tanggal Selesai *</label>
+            <input type="date" id="event-end-date" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          </div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="font-semibold text-slate-700">Kategori Agenda *</label>
+            <button type="button" onclick="openCategoryModal(true)" class="text-[10px] text-emerald-600 hover:underline flex items-center space-x-0.5">
+              <i data-lucide="plus" class="w-3 h-3"></i>
+              <span>Buat Kategori</span>
+            </button>
+          </div>
+          <select id="event-category" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white">
+            <!-- Populated dynamically via JS populateCategoryDropdown -->
+          </select>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Keterangan Tambahan</label>
+          <textarea id="event-description" rows="2" placeholder="Keterangan opsional untuk guru & siswa..." class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none"></textarea>
+        </div>
+
+        <div class="flex items-center justify-between pt-2 border-t border-slate-100">
+          <button type="button" id="btn-delete-event" onclick="confirmDeleteEvent()" class="hidden px-3 py-2 text-rose-600 hover:bg-rose-50 rounded-lg font-medium transition">
+            Hapus
+          </button>
+          <div class="flex items-center space-x-2 ml-auto">
+            <button type="button" onclick="closeEventModal()" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition">Batal</button>
+            <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold shadow-sm transition">Simpan Agenda</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: KELOLA KATEGORI & KODE WARNA PALET -->
+  <div id="modal-categories" class="no-print fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-xl w-full overflow-hidden transition-all border border-slate-100 flex flex-col max-h-[90vh]">
+      <!-- Header -->
+      <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
+        <h3 class="font-bold text-sm text-slate-800 flex items-center space-x-2">
+          <i data-lucide="palette" class="w-4 h-4 text-emerald-600"></i>
+          <span>Kelola Kategori & Kode Warna Kaldik</span>
+        </h3>
+        <button onclick="closeCategoryModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-5 overflow-y-auto flex-1 text-xs">
+        
+        <!-- Form Tambah / Edit Kategori -->
+        <form id="form-category" onsubmit="handleCategorySubmit(event)" class="bg-slate-50/80 p-4 rounded-xl border border-slate-200/90 space-y-3">
+          <input type="hidden" id="category-edit-id">
+          
+          <div class="flex items-center justify-between">
+            <h5 id="category-form-title" class="font-bold text-slate-800 text-xs flex items-center space-x-1.5">
+              <i data-lucide="plus-circle" class="w-3.5 h-3.5 text-emerald-600"></i>
+              <span>Tambah Kategori Baru</span>
+            </h5>
+            <button type="button" id="btn-cancel-edit-category" onclick="resetCategoryForm()" class="hidden text-[10px] text-slate-500 hover:text-slate-800 font-semibold underline">
+              Batal Edit
+            </button>
+          </div>
+
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Nama Kategori Agenda *</label>
+            <input type="text" id="category-input-name" required placeholder="Contoh: Class Meeting / Simulasi ANBK" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          </div>
+
+          <!-- Color Selection & Palettes -->
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1.5">Pilih Warna (Palet Populer & Custom):</label>
+            
+            <!-- Quick Preset Swatches -->
+            <div class="flex flex-wrap gap-2 items-center mb-2.5 p-2 bg-white rounded-lg border border-slate-200" id="palette-swatches-container">
+              <!-- Preset buttons inserted here -->
+            </div>
+
+            <!-- Custom Color Picker & Hex Input -->
+            <div class="flex items-center space-x-3 bg-white p-2.5 rounded-lg border border-slate-200">
+              <div class="flex items-center space-x-2">
+                <input type="color" id="category-color-picker" onchange="syncColorInput(this.value)" class="w-9 h-9 p-0.5 border border-slate-300 rounded-lg cursor-pointer bg-white">
+                <span class="text-[11px] text-slate-500 font-medium">Picker</span>
+              </div>
+              <div class="flex-1 flex items-center space-x-2">
+                <span class="text-slate-400 font-mono text-xs">HEX:</span>
+                <input type="text" id="category-color-hex" oninput="syncColorPicker(this.value)" placeholder="#059669" maxlength="7" class="w-28 px-2 py-1 uppercase font-mono text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-emerald-500">
+              </div>
+              <!-- Preview Badge -->
+              <div class="flex items-center space-x-1.5 pl-2 border-l border-slate-200">
+                <span id="category-preview-badge" class="px-2.5 py-1 text-[11px] font-bold rounded text-white shadow-xs" style="background-color: #059669;">
+                  Pratinjau
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Holiday / Effective Day Attribute -->
+          <div class="flex items-center space-x-2 pt-1">
+            <input type="checkbox" id="category-is-holiday" class="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300">
+            <label for="category-is-holiday" class="font-medium text-slate-700 cursor-pointer text-[11px]">
+              Tandai sebagai <span class="font-bold text-rose-600">Hari Libur Resmi / Bebas KBM</span> (Mengurangi Hari Efektif Belajar)
+            </label>
+          </div>
+
+          <div class="flex items-center justify-end space-x-2 pt-2">
+            <button type="submit" id="btn-save-category" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold shadow-sm transition flex items-center space-x-1.5">
+              <i data-lucide="check" class="w-3.5 h-3.5"></i>
+              <span id="btn-save-category-label">Simpan Kategori</span>
+            </button>
+          </div>
+        </form>
+
+        <!-- Daftar Kategori yang Sedang Aktif -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <h5 class="font-bold text-slate-800 text-xs">Daftar Kategori Terdaftar:</h5>
+            <button type="button" onclick="confirmResetCategories()" class="text-[10px] text-slate-500 hover:text-rose-600 font-medium underline">
+              Kembalikan ke Standar Kaldik
+            </button>
+          </div>
+
+          <div id="category-items-list" class="space-y-2 max-h-56 overflow-y-auto pr-1">
+            <!-- Populated via renderCategoryManagerList -->
+          </div>
+        </div>
+
+      </div>
+
+      <div class="px-6 py-3 border-t border-slate-100 flex items-center justify-end bg-slate-50/70">
+        <button type="button" onclick="closeCategoryModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg font-semibold text-xs transition">
+          Selesai
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-school" class="no-print fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden transition-all border border-slate-100">
+      <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+        <h3 class="font-bold text-sm text-slate-800 flex items-center space-x-2">
+          <i data-lucide="building-2" class="w-4 h-4 text-emerald-600"></i>
+          <span>Pengaturan KOP & Identitas Sekolah</span>
+        </h3>
+        <button onclick="closeSchoolModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="form-school" onsubmit="handleSchoolSubmit(event)" class="p-6 space-y-4 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Nama Yayasan / Instansi Induk</label>
+          <input type="text" id="school-instansi" placeholder="KEMENTERIAN AGAMA REPUBLIK INDONESIA" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Nama Madrasah / Sekolah *</label>
+          <input type="text" id="school-name" required placeholder="MAN 1 MODEL BANJARMASIN" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">NPSN / NSM</label>
+            <input type="text" id="school-npsn" placeholder="30304561" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Tahun Ajaran</label>
+            <input type="text" id="school-year" placeholder="2026/2027" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Alamat Lengkap & Kontak</label>
+          <input type="text" id="school-address" placeholder="Jl. Pendidikan No. 45 Telp. (0511) 7891234" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Kota / Tempat Pengesahan</label>
+            <input type="text" id="school-city" placeholder="Banjarmasin" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Tanggal Penetapan Kaldik</label>
+            <input type="text" id="school-doc-date" placeholder="15 Juli 2026" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Nama Kepala Sekolah / Madrasah</label>
+            <input type="text" id="school-principal" placeholder="Dr. H. Ahmad Fauzi, M.Pd" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">NIP Kepala Sekolah</label>
+            <input type="text" id="school-principal-nip" placeholder="19780512 200312 1 004" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
+          <button type="button" onclick="closeSchoolModal()" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition">Batal</button>
+          <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold shadow-sm transition">Simpan Perubahan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Pengaturan Ekspor PDF A4 (Semester & Orientasi Cetak) -->
+  <div id="modal-export" class="no-print fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden transition-all border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+      <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
+        <h3 class="font-bold text-sm text-slate-800 flex items-center space-x-2">
+          <i data-lucide="file-down" class="w-4 h-4 text-emerald-600"></i>
+          <span>Pengaturan Ekspor Dokumen A4 PDF</span>
+        </h3>
+        <button onclick="closeExportModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-5 text-xs">
+        
+        <!-- Pilihan 1: Rentang Periode Semester -->
+        <div>
+          <label class="block font-bold text-slate-800 mb-2 flex items-center space-x-1.5">
+            <i data-lucide="calendar-range" class="w-3.5 h-3.5 text-emerald-600"></i>
+            <span>Pilih Periode Kalender Pendidikan:</span>
+          </label>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <label class="relative flex flex-col p-3 border-2 border-emerald-500 bg-emerald-50/30 rounded-xl cursor-pointer hover:border-emerald-600 transition" id="label-scope-gasal">
+              <input type="radio" name="export-scope" value="gasal" checked onchange="handleExportScopeChange()" class="sr-only">
+              <span class="font-bold text-slate-800 text-[11px]">Semester Gasal</span>
+              <span class="text-[10px] text-slate-500 mt-0.5">Juli – Des (6 Bln)</span>
+              <span class="text-[9px] font-semibold text-emerald-700 mt-1">Semester 1 / Ganjil</span>
+            </label>
+
+            <label class="relative flex flex-col p-3 border-2 border-slate-200 rounded-xl cursor-pointer hover:border-slate-300 transition" id="label-scope-genap">
+              <input type="radio" name="export-scope" value="genap" onchange="handleExportScopeChange()" class="sr-only">
+              <span class="font-bold text-slate-800 text-[11px]">Semester Genap</span>
+              <span class="text-[10px] text-slate-500 mt-0.5">Jan – Jun (6 Bln)</span>
+              <span class="text-[9px] font-semibold text-emerald-700 mt-1">Semester 2 / Genap</span>
+            </label>
+
+            <label class="relative flex flex-col p-3 border-2 border-slate-200 rounded-xl cursor-pointer hover:border-slate-300 transition" id="label-scope-full">
+              <input type="radio" name="export-scope" value="full" onchange="handleExportScopeChange()" class="sr-only">
+              <span class="font-bold text-slate-800 text-[11px]">1 Tahun Penuh</span>
+              <span class="text-[10px] text-slate-500 mt-0.5">Jul – Jun (12 Bln)</span>
+              <span class="text-[9px] font-semibold text-purple-700 mt-1">Tahun Ajaran Lengkap</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Pilihan 2: Orientasi Halaman Cetak A4 -->
+        <div>
+          <label class="block font-bold text-slate-800 mb-2 flex items-center space-x-1.5">
+            <i data-lucide="layout" class="w-3.5 h-3.5 text-emerald-600"></i>
+            <span>Pilih Orientasi Cetak A4:</span>
+          </label>
+          <div class="grid grid-cols-2 gap-3">
+            <label class="flex items-center space-x-3 p-3 border-2 border-emerald-500 bg-emerald-50/30 rounded-xl cursor-pointer hover:border-emerald-600 transition" id="label-orient-landscape">
+              <input type="radio" name="export-orient" value="landscape" checked onchange="handleExportOrientChange()" class="sr-only">
+              <div class="w-9 h-6 border-2 border-slate-700 rounded-sm flex items-center justify-center bg-white shadow-xs">
+                <span class="text-[8px] font-bold text-slate-500">A4</span>
+              </div>
+              <div>
+                <p class="font-bold text-slate-800 text-xs">Lanskap (Landscape)</p>
+                <p class="text-[10px] text-slate-500">Melebar horizontal (Standar Kaldik)</p>
+              </div>
+            </label>
+
+            <label class="flex items-center space-x-3 p-3 border-2 border-slate-200 rounded-xl cursor-pointer hover:border-slate-300 transition" id="label-orient-portrait">
+              <input type="radio" name="export-orient" value="portrait" onchange="handleExportOrientChange()" class="sr-only">
+              <div class="w-6 h-9 border-2 border-slate-700 rounded-sm flex items-center justify-center bg-white shadow-xs">
+                <span class="text-[8px] font-bold text-slate-500">A4</span>
+              </div>
+              <div>
+                <p class="font-bold text-slate-800 text-xs">Potret (Portrait)</p>
+                <p class="text-[10px] text-slate-500">Memanjang vertikal</p>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Pilihan 3: Konfigurasi Tambahan -->
+        <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 space-y-2">
+          <label class="flex items-center space-x-2.5 cursor-pointer">
+            <input type="checkbox" id="export-include-table" checked class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300">
+            <span class="text-[11px] font-medium text-slate-700">Sertakan Halaman Lampiran Tabel Rincian Agenda & Pengesahan</span>
+          </label>
+          <p class="text-[10px] text-slate-500 pl-6">
+            Tips: Pada jendela print browser, pilih printer <strong>"Save as PDF"</strong> / <strong>"Simpan sebagai PDF"</strong> dan pastikan opsi <strong>"Background graphics"</strong> dicentang.
+          </p>
+        </div>
+
+        <div class="flex items-center justify-end space-x-2 pt-2 border-t border-slate-100">
+          <button type="button" onclick="closeExportModal()" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition">
+            Batal
+          </button>
+          <button type="button" onclick="executeExportPdf()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold shadow-sm transition flex items-center space-x-1.5">
+            <i data-lucide="printer" class="w-4 h-4"></i>
+            <span>Cetak / Unduh PDF</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Backup & Upload File JSON -->
+  <div id="modal-backup" class="no-print fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-xl w-full overflow-hidden transition-all border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+      <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
+        <h3 class="font-bold text-sm text-slate-800 flex items-center space-x-2">
+          <i data-lucide="database-backup" class="w-4 h-4 text-emerald-600"></i>
+          <span>Cadangkan & Pulihkan Data (JSON)</span>
+        </h3>
+        <button onclick="closeBackupModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-6 text-xs">
+        
+        <!-- Bagian 1: Download Backup JSON -->
+        <div class="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3">
+          <div class="flex items-start justify-between">
+            <div>
+              <h4 class="font-bold text-slate-800 text-sm flex items-center space-x-1.5">
+                <i data-lucide="download" class="w-4 h-4 text-emerald-600"></i>
+                <span>Unduh File Cadangan (Export JSON)</span>
+              </h4>
+              <p class="text-[11px] text-slate-500 mt-1">
+                Simpan seluruh data profil madrasah/sekolah dan seluruh agenda kegiatan kalender pendidikan ke dalam satu berkas file format JSON.
+              </p>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200/70">
+            <span id="backup-status-badge" class="text-[11px] font-medium text-slate-600 bg-white px-3 py-1 rounded-md border border-slate-200">
+              Memuat data...
+            </span>
+            <button type="button" onclick="downloadBackupJSON()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold shadow-sm transition flex items-center space-x-1.5">
+              <i data-lucide="file-json" class="w-4 h-4"></i>
+              <span>Unduh Cadangan JSON</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Bagian 2: Upload & Restore JSON -->
+        <div class="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3">
+          <h4 class="font-bold text-slate-800 text-sm flex items-center space-x-1.5">
+            <i data-lucide="upload" class="w-4 h-4 text-indigo-600"></i>
+            <span>Pulihkan Data dari File JSON (Import)</span>
+          </h4>
+          <p class="text-[11px] text-slate-500">
+            Unggah file cadangan JSON yang pernah diunduh sebelumnya untuk mengembalikan atau memperbarui agenda kalender.
+          </p>
+
+          <!-- Input File Drag-Drop Box -->
+          <div class="border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-xl p-4 text-center cursor-pointer transition bg-white" onclick="document.getElementById('backup-file-input').click()">
+            <input type="file" id="backup-file-input" accept=".json,application/json" onchange="handleBackupFileSelect(event)" class="hidden">
+            <i data-lucide="file-up" class="w-7 h-7 mx-auto mb-1 text-slate-400"></i>
+            <p class="font-semibold text-slate-700 text-xs">Klik untuk memilih file backup JSON</p>
+            <p class="text-[10px] text-slate-400 mt-0.5">Format file yang didukung: .json</p>
+          </div>
+
+          <!-- Preview Berkas yang Dipilih -->
+          <div id="restore-preview-box" class="hidden p-3 bg-emerald-50 border border-emerald-200 rounded-xl space-y-1.5 text-[11px]">
+            <div class="flex items-center justify-between font-bold text-emerald-900">
+              <span class="flex items-center space-x-1">
+                <i data-lucide="check-circle" class="w-3.5 h-3.5 text-emerald-600"></i>
+                <span id="preview-filename">backup.json</span>
+              </span>
+              <span id="preview-filesize" class="text-emerald-700 font-normal">0 KB</span>
+            </div>
+            <p id="preview-school-info" class="text-emerald-800">Profil: -</p>
+            <p id="preview-events-info" class="text-emerald-800">Total agenda ditemukan: 0</p>
+          </div>
+
+          <!-- Pilihan Mode Pemulihan -->
+          <div id="restore-options-box" class="hidden space-y-2 pt-1">
+            <label class="block font-bold text-slate-700 text-xs">Pilih Mode Pemulihan:</label>
+            <div class="grid grid-cols-2 gap-2">
+              <label class="flex items-start space-x-2 p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer hover:border-slate-300">
+                <input type="radio" name="restore-mode" value="overwrite" checked class="mt-0.5 text-emerald-600 focus:ring-emerald-500">
+                <div>
+                  <span class="font-bold text-slate-800 block text-[11px]">Timpa Semua (Overwrite)</span>
+                  <span class="text-[10px] text-slate-500">Mengganti semua agenda saat ini dengan data file backup.</span>
+                </div>
+              </label>
+
+              <label class="flex items-start space-x-2 p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer hover:border-slate-300">
+                <input type="radio" name="restore-mode" value="merge" class="mt-0.5 text-emerald-600 focus:ring-emerald-500">
+                <div>
+                  <span class="font-bold text-slate-800 block text-[11px]">Gabungkan (Merge)</span>
+                  <span class="text-[10px] text-slate-500">Menambahkan agenda dari file tanpa menghapus agenda lama.</span>
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end space-x-2 pt-2 border-t border-slate-100">
+          <button type="button" onclick="closeBackupModal()" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition">
+            Tutup
+          </button>
+          <button type="button" id="btn-execute-restore" onclick="executeRestoreJSON()" disabled class="px-5 py-2 bg-slate-300 text-slate-500 cursor-not-allowed rounded-lg font-semibold shadow-sm transition flex items-center space-x-1.5">
+            <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+            <span>Pulihkan Data Sekarang</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+  <script>
+    /* ==========================================================================
+       1. GLOBAL SWITCH & CONFIGURATION LAYER
+       ========================================================================== */
+    const is_preview = false; // UBAH KE false UNTUK MENGHUBUNGKAN KE SUPABASE ASLI
+
+    const SUPABASE_URL = "https://pevqnrmqicdwclkfcnon.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_37Ueo6gkxrU2fPRNqkHiMQ_6RWdSmhI";
+
+    let supabaseClient = null;
+    if (!is_preview && typeof supabase !== 'undefined') {
+      supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    }
+
+    /* ==========================================================================
+       PALET WARNA KALDIK & KATEGORI DINAMIS
+       ========================================================================== */
+    const COLOR_PALETTES = [
+      { name: 'Sky Blue (Matsama)', hex: '#0284c7' },
+      { name: 'Amber Gold (Ujian)', hex: '#d97706' },
+      { name: 'Rose Red (Libur Semester)', hex: '#e11d48' },
+      { name: 'Pure Red (Libur Nasional)', hex: '#dc2626' },
+      { name: 'Purple (Buku Rapor)', hex: '#7c3aed' },
+      { name: 'Indigo (Proyek P5)', hex: '#4f46e5' },
+      { name: 'Teal (Efektif Khusus)', hex: '#0d9488' },
+      { name: 'Emerald (Kemenag Hijau)', hex: '#059669' },
+      { name: 'Orange Jingga', hex: '#ea580c' },
+      { name: 'Fuchsia Pink', hex: '#c026d3' },
+      { name: 'Lime Hijau Muda', hex: '#65a30d' },
+      { name: 'Slate Abu Netral', hex: '#475569' }
+    ];
+
+    const DEFAULT_CATEGORIES = {
+      matsama: { id: 'matsama', label: 'MPLS / Matsama', color: '#0284c7', isHoliday: false },
+      ujian: { id: 'ujian', label: 'Asesmen / Ujian (PTS/PAS/US)', color: '#d97706', isHoliday: false },
+      libur_semester: { id: 'libur_semester', label: 'Libur Akhir Semester', color: '#e11d48', isHoliday: true },
+      libur_nasional: { id: 'libur_nasional', label: 'Libur Resmi / Keagamaan', color: '#dc2626', isHoliday: true },
+      rapor: { id: 'rapor', label: 'Pembagian Buku Rapor', color: '#7c3aed', isHoliday: false },
+      p5: { id: 'p5', label: 'Proyek P5 / P2RA / Khusus', color: '#4f46e5', isHoliday: false },
+      efektif_khusus: { id: 'efektif_khusus', label: 'Kegiatan Efektif Khusus', color: '#0d9488', isHoliday: false }
+    };
+
+    function getContrastTextColor(hexColor) {
+      if (!hexColor || hexColor.length < 6) return '#ffffff';
+      const cleanHex = hexColor.replace('#', '');
+      const r = parseInt(cleanHex.substr(0, 2), 16);
+      const g = parseInt(cleanHex.substr(2, 2), 16);
+      const b = parseInt(cleanHex.substr(4, 2), 16);
+      const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+      return (yiq >= 150) ? '#0f172a' : '#ffffff';
+    }
+
+    const INITIAL_EVENTS = [
+      // Semester Gasal (Juli - Desember 2026)
+      { id: '1', title: 'Hari Pertama Masuk Sekolah & Matsama / MPLS', start_date: '2026-07-13', end_date: '2026-07-15', category: 'matsama', description: 'Orientasi peserta didik baru dan penataan kelas' },
+      { id: '2', title: 'HUT Kemerdekaan RI Ke-81', start_date: '2026-08-17', end_date: '2026-08-17', category: 'libur_nasional', description: 'Upacara bendera & Libur Nasional' },
+      { id: '3', title: 'Maulid Nabi Muhammad SAW 1448 H', start_date: '2026-08-25', end_date: '2026-08-25', category: 'libur_nasional', description: 'Libur Keagamaan' },
+      { id: '4', title: 'Penilaian Tengah Semester (PTS / STS Gasal)', start_date: '2026-09-21', end_date: '2026-09-26', category: 'ujian', description: 'Evaluasi formatif tengah semester' },
+      { id: '5', title: 'Gelar Karya Proyek P5 & P2RA', start_date: '2026-10-26', end_date: '2026-10-28', category: 'p5', description: 'Pameran kreasi siswa dan kewirausahaan madrasah' },
+      { id: '6', title: 'Penilaian Akhir Semester (PAS / SAS Gasal)', start_date: '2026-11-30', end_date: '2026-12-08', category: 'ujian', description: 'Asesmen sumatif akhir semester gasal' },
+      { id: '7', title: 'Pembagian Buku Laporan Hasil Belajar (Rapor Gasal)', start_date: '2026-12-18', end_date: '2026-12-18', category: 'rapor', description: 'Penyerahan rapor ke wali murid' },
+      { id: '8', title: 'Libur Akhir Semester Gasal', start_date: '2026-12-21', end_date: '2026-12-31', category: 'libur_semester', description: 'Libur peserta didik semester gasal' },
+
+      // Semester Genap (Januari - Juni 2027)
+      { id: '9', title: 'Hari Pertama Masuk Sekolah Semester Genap', start_date: '2027-01-04', end_date: '2027-01-04', category: 'efektif_khusus', description: 'Awal KBM Semester Genap' },
+      { id: '10', title: 'Hari Amal Bhakti (HAB) Kementerian Agama', start_date: '2027-01-03', end_date: '2027-01-03', category: 'libur_nasional', description: 'Upacara peringatan HAB Kemenag' },
+      { id: '11', title: 'Libur Awal Ramadhan 1448 H', start_date: '2027-02-08', end_date: '2027-02-10', category: 'efektif_khusus', description: 'Penyesuaian awal puasa' },
+      { id: '12', title: 'Penilaian Tengah Semester (PTS Genap) & Pondok Ramadhan', start_date: '2027-03-01', end_date: '2027-03-06', category: 'ujian', description: 'PTS dan penguatan karakter religius' },
+      { id: '13', title: 'Hari Raya Idul Fitri 1448 H & Cuti Bersama', start_date: '2027-03-18', end_date: '2027-03-27', category: 'libur_nasional', description: 'Libur lebaran Idul Fitri' },
+      { id: '14', title: 'Asesmen Madrasah / Ujian Sekolah Kelas Akhir', start_date: '2027-04-12', end_date: '2027-04-20', category: 'ujian', description: 'Ujian kelulusan tingkat akhir' },
+      { id: '15', title: 'Penilaian Akhir Tahun (PAT / ASAT Genap)', start_date: '2027-05-31', end_date: '2027-06-08', category: 'ujian', description: 'Asesmen kenaikan kelas' },
+      { id: '16', title: 'Pembagian Buku Rapor Semester Genap / Kenaikan Kelas', start_date: '2027-06-18', end_date: '2027-06-18', category: 'rapor', description: 'Penyerahan rapor akhir tahun' },
+      { id: '17', title: 'Libur Akhir Tahun Ajaran', start_date: '2027-06-21', end_date: '2027-07-10', category: 'libur_semester', description: 'Libur kenaikan kelas' }
+    ];
+
+    const DEFAULT_SCHOOL = {
+      instansi: "KEMENTERIAN AGAMA REPUBLIK INDONESIA",
+      name: "MADRASAH ALIYAH NEGERI 1 MODEL",
+      npsn: "30304561",
+      year: "2026/2027",
+      address: "Jl. Pendidikan No. 45 Telp. (0511) 7891234 Kota Banjarmasin",
+      city: "Banjarmasin",
+      docDate: "15 Juli 2026",
+      principal: "Dr. H. Ahmad Fauzi, M.Pd",
+      principalNip: "19780512 200312 1 004"
+    };
+
+    const AppState = {
+      currentSemester: localStorage.getItem('kaldik_active_sem') || 'gasal',
+      school: JSON.parse(localStorage.getItem('kaldik_school')) || DEFAULT_SCHOOL,
+      events: JSON.parse(localStorage.getItem('kaldik_events')) || INITIAL_EVENTS,
+      categories: JSON.parse(localStorage.getItem('kaldik_categories')) || DEFAULT_CATEGORIES,
+      
+      saveSchool(newSchool) {
+        this.school = newSchool;
+        localStorage.setItem('kaldik_school', JSON.stringify(newSchool));
+      },
+
+      saveEvents(newEvents) {
+        this.events = newEvents;
+        localStorage.setItem('kaldik_events', JSON.stringify(newEvents));
+      },
+
+      saveCategories(newCategories) {
+        this.categories = newCategories;
+        localStorage.setItem('kaldik_categories', JSON.stringify(newCategories));
+      },
+
+      setSemester(sem) {
+        this.currentSemester = sem;
+        localStorage.setItem('kaldik_active_sem', sem);
+      }
+    };
+
+    const DataService = {
+      async getEvents() {
+        if (is_preview || !supabaseClient) {
+          return AppState.events;
+        }
+        try {
+          const { data, error } = await supabaseClient.from('kaldik_events').select('*');
+          if (error) throw error;
+          AppState.saveEvents(data);
+          return data;
+        } catch (err) {
+          console.warn("Supabase fetch failed, falling back to local:", err);
+          return AppState.events;
+        }
+      },
+
+      async saveEvent(eventItem) {
+        if (is_preview || !supabaseClient) {
+          const current = [...AppState.events];
+          const existingIdx = current.findIndex(e => e.id === eventItem.id);
+          if (existingIdx >= 0) {
+            current[existingIdx] = eventItem;
+          } else {
+            eventItem.id = eventItem.id || 'id_' + Date.now();
+            current.push(eventItem);
+          }
+          AppState.saveEvents(current);
+          return eventItem;
+        }
+
+        try {
+          const { data, error } = await supabaseClient
+            .from('kaldik_events')
+            .upsert(eventItem)
+            .select()
+            .single();
+          if (error) throw error;
+          await this.getEvents();
+          return data;
+        } catch (err) {
+          console.error("Supabase upsert error:", err);
+          throw err;
+        }
+      },
+
+      async deleteEvent(id) {
+        if (is_preview || !supabaseClient) {
+          const filtered = AppState.events.filter(e => e.id !== id);
+          AppState.saveEvents(filtered);
+          return true;
+        }
+
+        try {
+          const { error } = await supabaseClient.from('kaldik_events').delete().eq('id', id);
+          if (error) throw error;
+          await this.getEvents();
+          return true;
+        } catch (err) {
+          console.error("Supabase delete error:", err);
+          throw err;
+        }
+      }
+    };
+
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      
+      const colors = {
+        success: 'bg-emerald-600 text-white shadow-emerald-500/20',
+        error: 'bg-rose-600 text-white shadow-rose-500/20',
+        info: 'bg-slate-800 text-white shadow-slate-900/20'
+      };
+
+      const icons = {
+        success: '<i data-lucide="check-circle" class="w-4 h-4"></i>',
+        error: '<i data-lucide="alert-triangle" class="w-4 h-4"></i>',
+        info: '<i data-lucide="info" class="w-4 h-4"></i>'
+      };
+
+      toast.className = `pointer-events-auto flex items-center space-x-2.5 px-4 py-3 rounded-xl shadow-lg text-xs font-semibold transform transition-all duration-300 opacity-0 translate-y-2 ${colors[type] || colors.info}`;
+      toast.innerHTML = `
+        ${icons[type] || icons.info}
+        <span>${message}</span>
+      `;
+
+      container.appendChild(toast);
+      lucide.createIcons();
+
+      requestAnimationFrame(() => {
+        toast.classList.remove('opacity-0', 'translate-y-2');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    function renderSchoolIdentity() {
+      const sc = AppState.school;
+      document.getElementById('school-name-subtitle').innerText = `${sc.name} • T.A. ${sc.year}`;
+      document.getElementById('stat-academic-year').innerText = sc.year;
+      
+      document.getElementById('kop-nama-yayasan').innerText = sc.instansi || "KEMENTERIAN AGAMA";
+      document.getElementById('kop-nama-sekolah').innerText = sc.name;
+      document.getElementById('kop-alamat').innerText = `${sc.address} - NPSN: ${sc.npsn}`;
+      document.getElementById('kop-doc-title').innerText = `KALENDER PENDIDIKAN TAHUN AJARAN ${sc.year}`;
+
+      document.getElementById('print-kota-tanggal').innerText = `${sc.city}, ${sc.docDate}`;
+      document.getElementById('print-nama-kepala').innerText = sc.principal;
+      document.getElementById('print-nip-kepala').innerText = `NIP. ${sc.principalNip}`;
+    }
+
+    const INDO_MONTHS = [
+      { name: 'Januari', monthIndex: 0, yearOffset: 1, semester: 'genap' },
+      { name: 'Februari', monthIndex: 1, yearOffset: 1, semester: 'genap' },
+      { name: 'Maret', monthIndex: 2, yearOffset: 1, semester: 'genap' },
+      { name: 'April', monthIndex: 3, yearOffset: 1, semester: 'genap' },
+      { name: 'Mei', monthIndex: 4, yearOffset: 1, semester: 'genap' },
+      { name: 'Juni', monthIndex: 5, yearOffset: 1, semester: 'genap' },
+      { name: 'Juli', monthIndex: 6, yearOffset: 0, semester: 'gasal' },
+      { name: 'Agustus', monthIndex: 7, yearOffset: 0, semester: 'gasal' },
+      { name: 'September', monthIndex: 8, yearOffset: 0, semester: 'gasal' },
+      { name: 'Oktober', monthIndex: 9, yearOffset: 0, semester: 'gasal' },
+      { name: 'November', monthIndex: 10, yearOffset: 0, semester: 'gasal' },
+      { name: 'Desember', monthIndex: 11, yearOffset: 0, semester: 'gasal' },
+    ];
+
+    function getBaseYear() {
+      const parts = (AppState.school.year || "2026/2027").split('/');
+      return parseInt(parts[0], 10) || 2026;
+    }
+
+    function getVisibleMonths() {
+      const sem = AppState.currentSemester;
+      if (sem === 'gasal') {
+        return INDO_MONTHS.filter(m => m.semester === 'gasal');
+      } else if (sem === 'genap') {
+        return INDO_MONTHS.filter(m => m.semester === 'genap');
+      } else {
+        const gasal = INDO_MONTHS.filter(m => m.semester === 'gasal');
+        const genap = INDO_MONTHS.filter(m => m.semester === 'genap');
+        return [...gasal, ...genap];
+      }
+    }
+
+    function dateToString(year, month, day) {
+      const mm = String(month + 1).padStart(2, '0');
+      const dd = String(day).padStart(2, '0');
+      return `${year}-${mm}-${dd}`;
+    }
+
+    function getEventForDate(dateStr) {
+      return AppState.events.find(ev => {
+        return dateStr >= ev.start_date && dateStr <= ev.end_date;
+      });
+    }
+
+    function renderCalendar() {
+      const container = document.getElementById('months-grid-container');
+      container.innerHTML = '';
+
+      const baseYear = getBaseYear();
+      const visibleMonths = getVisibleMonths();
+      const dayHeaders = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+
+      visibleMonths.forEach(m => {
+        const actualYear = baseYear + m.yearOffset;
+        const firstDay = new Date(actualYear, m.monthIndex, 1).getDay();
+        const totalDays = new Date(actualYear, m.monthIndex + 1, 0).getDate();
+
+        const card = document.createElement('div');
+        card.className = "border border-slate-200/90 rounded-xl overflow-hidden bg-white shadow-[0_1px_3px_rgba(0,0,0,0.02)]";
+
+        let headerColor = m.semester === 'gasal' ? 'bg-slate-900 text-white' : 'bg-emerald-800 text-white';
+        
+        let html = `
+          <div class="${headerColor} px-3 py-1.5 flex items-center justify-between text-xs font-bold">
+            <span>${m.name.toUpperCase()} ${actualYear}</span>
+            <span class="text-[10px] font-normal opacity-80 uppercase">${m.semester}</span>
+          </div>
+          <div class="p-2">
+            <div class="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-slate-500 mb-1 border-b border-slate-100 pb-1">
+              ${dayHeaders.map((dh, idx) => `<span class="${idx === 0 ? 'text-red-500' : ''}">${dh}</span>`).join('')}
+            </div>
+            <div class="grid grid-cols-7 gap-1 text-center text-[11px]">
+        `;
+
+        for (let i = 0; i < firstDay; i++) {
+          html += `<div class="h-7 w-full"></div>`;
+        }
+
+        for (let day = 1; day <= totalDays; day++) {
+          const dateStr = dateToString(actualYear, m.monthIndex, day);
+          const currentDayOfWeek = new Date(actualYear, m.monthIndex, day).getDay();
+          const isSunday = currentDayOfWeek === 0;
+          const isFriday = currentDayOfWeek === 5;
+          const event = getEventForDate(dateStr);
+
+          let cellClass = "h-7 w-full flex items-center justify-center rounded font-semibold transition cursor-pointer relative ";
+          let customStyle = "";
+          let tooltip = `${day} ${m.name} ${actualYear}`;
+
+          if (event) {
+            const cat = AppState.categories[event.category] || { label: 'Agenda', color: '#059669', isHoliday: false };
+            const contrast = getContrastTextColor(cat.color);
+            customStyle = `background-color: ${cat.color} !important; color: ${contrast} !important;`;
+            cellClass += "font-bold shadow-xs hover:scale-105 ";
+            tooltip += `: ${event.title} (${cat.label})`;
+          } else if (isSunday) {
+            cellClass += "text-red-600 bg-red-50/70 hover:bg-red-100 ";
+          } else if (isFriday) {
+            cellClass += "text-emerald-700 bg-emerald-50/40 hover:bg-emerald-100 ";
+          } else {
+            cellClass += "text-slate-700 hover:bg-slate-100 ";
+          }
+
+          html += `
+            <div onclick="handleDayClick('${dateStr}')" title="${tooltip}" style="${customStyle}" class="${cellClass}">
+              <span>${day}</span>
+              ${event ? `<span class="absolute bottom-0.5 w-1 h-1 bg-white/90 rounded-full"></span>` : ''}
+            </div>
+          `;
+        }
+
+        html += `
+            </div>
+          </div>
+        `;
+
+        card.innerHTML = html;
+        container.appendChild(card);
+      });
+
+      renderKPIAndAgenda();
+    }
+
+    function renderKPIAndAgenda() {
+      const baseYear = getBaseYear();
+      const visibleMonths = getVisibleMonths();
+      
+      let totalDaysInScope = 0;
+      let sundayCount = 0;
+      let officialHolidayDays = 0;
+
+      const relevantEvents = AppState.events.filter(ev => {
+        const start = new Date(ev.start_date);
+        const end = new Date(ev.end_date);
+        return visibleMonths.some(m => {
+          const mYear = baseYear + m.yearOffset;
+          const mStart = new Date(mYear, m.monthIndex, 1);
+          const mEnd = new Date(mYear, m.monthIndex + 1, 0);
+          return start <= mEnd && end >= mStart;
+        });
+      });
+
+      visibleMonths.forEach(m => {
+        const actualYear = baseYear + m.yearOffset;
+        const totalDays = new Date(actualYear, m.monthIndex + 1, 0).getDate();
+        totalDaysInScope += totalDays;
+
+        for (let d = 1; d <= totalDays; d++) {
+          const dObj = new Date(actualYear, m.monthIndex, d);
+          const dStr = dateToString(actualYear, m.monthIndex, d);
+          if (dObj.getDay() === 0) {
+            sundayCount++;
+          }
+          const ev = getEventForDate(dStr);
+          if (ev) {
+            const cat = AppState.categories[ev.category];
+            if (cat && cat.isHoliday) {
+              officialHolidayDays++;
+            }
+          }
+        }
+      });
+
+      const hebEstimated = Math.max(0, totalDaysInScope - sundayCount - officialHolidayDays);
+      const pekanEfektif = Math.round(hebEstimated / 6);
+
+      document.getElementById('stat-heb').innerText = hebEstimated;
+      document.getElementById('stat-pekan').innerText = pekanEfektif;
+      document.getElementById('stat-libur').innerText = officialHolidayDays;
+      
+      const semLabel = AppState.currentSemester === 'gasal' 
+        ? 'Gasal (Juli - Des)' 
+        : (AppState.currentSemester === 'genap' ? 'Genap (Jan - Jun)' : '1 Tahun Ajaran Penuh');
+      document.getElementById('stat-semester-label').innerText = semLabel;
+      document.getElementById('calendar-view-heading').innerText = `Grid Kalender - Semester ${semLabel}`;
+
+      renderAgendaList(relevantEvents);
+      renderPrintTable(relevantEvents);
+    }
+
+    function renderAgendaList(eventsList) {
+      const container = document.getElementById('agenda-items-container');
+      const badge = document.getElementById('agenda-count-badge');
+      badge.innerText = `${eventsList.length} Agenda`;
+
+      if (eventsList.length === 0) {
+        container.innerHTML = `
+          <div class="py-8 text-center text-slate-400">
+            <i data-lucide="calendar-x" class="w-8 h-8 mx-auto mb-2 stroke-1"></i>
+            <p class="text-xs">Tidak ada agenda pada periode ini.</p>
+          </div>
+        `;
+        lucide.createIcons();
+        return;
+      }
+
+      const sorted = [...eventsList].sort((a, b) => a.start_date.localeCompare(b.start_date));
+
+      container.innerHTML = sorted.map(ev => {
+        const cat = AppState.categories[ev.category] || { label: ev.category, color: '#059669' };
+        return `
+          <div onclick="editEvent('${ev.id}')" class="p-2.5 rounded-xl border border-slate-100 hover:border-slate-300 hover:bg-slate-50 transition cursor-pointer flex items-start space-x-3 group">
+            <div class="w-3 h-3 rounded-full mt-1 flex-shrink-0 shadow-xs" style="background-color: ${cat.color};"></div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] font-bold uppercase tracking-wider" style="color: ${cat.color};">${cat.label}</span>
+                <span class="text-[10px] text-slate-400">${formatDateRange(ev.start_date, ev.end_date)}</span>
+              </div>
+              <h5 class="text-xs font-semibold text-slate-800 truncate group-hover:text-emerald-700 transition">${ev.title}</h5>
+              ${ev.description ? `<p class="text-[11px] text-slate-500 truncate mt-0.5">${ev.description}</p>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    function renderPrintTable(eventsList) {
+      const tbody = document.getElementById('print-agenda-table-body');
+      const sorted = [...eventsList].sort((a, b) => a.start_date.localeCompare(b.start_date));
+
+      if (sorted.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="border border-slate-400 p-2 text-center text-slate-400">Tidak ada agenda khusus.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = sorted.map((ev, idx) => {
+        const cat = AppState.categories[ev.category] || { label: ev.category, color: '#059669' };
+        return `
+          <tr>
+            <td class="border border-slate-400 p-1.5 text-center font-bold">${idx + 1}</td>
+            <td class="border border-slate-400 p-1.5 whitespace-nowrap">${formatDateRange(ev.start_date, ev.end_date)}</td>
+            <td class="border border-slate-400 p-1.5 font-medium">
+              <div class="flex items-center space-x-1.5">
+                <span class="w-2.5 h-2.5 rounded-full inline-block flex-shrink-0" style="background-color: ${cat.color};"></span>
+                <span>${cat.label}</span>
+              </div>
+            </td>
+            <td class="border border-slate-400 p-1.5 font-bold">${ev.title}</td>
+            <td class="border border-slate-400 p-1.5 text-slate-600">${ev.description || '-'}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function formatDateRange(startStr, endStr) {
+      if (!startStr) return '';
+      const d1 = new Date(startStr);
+      const d2 = new Date(endStr);
+      
+      const sDay = d1.getDate();
+      const eDay = d2.getDate();
+      const sMonth = INDO_MONTHS[d1.getMonth()].name;
+      const eMonth = INDO_MONTHS[d2.getMonth()].name;
+      const sYear = d1.getFullYear();
+
+      if (startStr === endStr) {
+        return `${sDay} ${sMonth} ${sYear}`;
+      }
+      if (d1.getMonth() === d2.getMonth()) {
+        return `${sDay} - ${eDay} ${sMonth} ${sYear}`;
+      }
+      return `${sDay} ${sMonth} - ${eDay} ${eMonth} ${sYear}`;
+    }
+
+    function renderLegend() {
+      const container = document.getElementById('legend-list');
+      const cats = Object.values(AppState.categories);
+
+      container.innerHTML = cats.map(item => `
+        <div class="flex items-center justify-between group py-0.5">
+          <div class="flex items-center space-x-2.5 min-w-0">
+            <span class="w-3.5 h-3.5 rounded flex-shrink-0 shadow-xs" style="background-color: ${item.color};"></span>
+            <span class="text-slate-700 font-medium text-[11px] truncate">${item.label}</span>
+            ${item.isHoliday ? `<span class="px-1.5 py-0.2 text-[9px] bg-rose-50 text-rose-600 border border-rose-200 rounded font-bold">Libur</span>` : ''}
+          </div>
+          <button onclick="editCategory('${item.id}')" title="Edit kategori ini" class="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-emerald-600 transition rounded">
+            <i data-lucide="edit-2" class="w-3 h-3"></i>
+          </button>
+        </div>
+      `).join('');
+
+      populateCategoryDropdown();
+      lucide.createIcons();
+    }
+
+    function populateCategoryDropdown(selectedKey = null) {
+      const select = document.getElementById('event-category');
+      if (!select) return;
+
+      select.innerHTML = Object.values(AppState.categories).map(cat => `
+        <option value="${cat.id}" ${selectedKey === cat.id ? 'selected' : ''}>
+          ${cat.label} ${cat.isHoliday ? '(Libur)' : ''}
+        </option>
+      `).join('');
+    }
+
+    /* ==========================================================================
+       MANAJEMEN KATEGORI & PALET WARNA (CONTROLLER & UI)
+       ========================================================================== */
+
+    function initPaletteSwatches() {
+      const container = document.getElementById('palette-swatches-container');
+      if (!container) return;
+
+      container.innerHTML = COLOR_PALETTES.map(p => `
+        <button type="button" onclick="selectPaletteColor('${p.hex}')" title="${p.name} (${p.hex})" class="w-6 h-6 rounded-md shadow-xs hover:scale-110 active:scale-95 transition transform border border-black/10 focus:ring-2 focus:ring-emerald-500 focus:outline-none" style="background-color: ${p.hex};"></button>
+      `).join('');
+    }
+
+    function selectPaletteColor(hex) {
+      syncColorInput(hex);
+    }
+
+    function syncColorInput(hex) {
+      const hexInput = document.getElementById('category-color-hex');
+      const pickerInput = document.getElementById('category-color-picker');
+      const previewBadge = document.getElementById('category-preview-badge');
+
+      if (hexInput) hexInput.value = hex.toUpperCase();
+      if (pickerInput) pickerInput.value = hex;
+      if (previewBadge) {
+        previewBadge.style.backgroundColor = hex;
+        previewBadge.style.color = getContrastTextColor(hex);
+      }
+    }
+
+    function syncColorPicker(val) {
+      let hex = val.trim();
+      if (!hex.startsWith('#')) hex = '#' + hex;
+      if (/^#[0-9A-Fa-f]{6}$/.test(hex)) {
+        syncColorInput(hex);
+      }
+    }
+
+    function openCategoryModal(openNew = false) {
+      initPaletteSwatches();
+      renderCategoryManagerList();
+      resetCategoryForm();
+
+      if (openNew) {
+        selectPaletteColor('#059669');
+      }
+
+      const modal = document.getElementById('modal-categories');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      lucide.createIcons();
+    }
+
+    function closeCategoryModal() {
+      const modal = document.getElementById('modal-categories');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function renderCategoryManagerList() {
+      const container = document.getElementById('category-items-list');
+      const cats = Object.values(AppState.categories);
+
+      container.innerHTML = cats.map(cat => {
+        const eventsUsingCount = AppState.events.filter(e => e.category === cat.id).length;
+        const isDefault = ['matsama', 'ujian', 'libur_semester', 'libur_nasional', 'rapor', 'p5', 'efektif_khusus'].includes(cat.id);
+
+        return `
+          <div class="p-2.5 bg-white border border-slate-200 rounded-xl flex items-center justify-between hover:border-slate-300 transition">
+            <div class="flex items-center space-x-3 min-w-0">
+              <span class="w-5 h-5 rounded-md flex-shrink-0 shadow-xs" style="background-color: ${cat.color};"></span>
+              <div>
+                <div class="flex items-center space-x-1.5">
+                  <span class="font-bold text-slate-800 text-xs">${cat.label}</span>
+                  ${cat.isHoliday ? `<span class="px-1.5 py-0.5 text-[9px] bg-rose-100 text-rose-700 font-bold rounded">Libur</span>` : ''}
+                </div>
+                <div class="flex items-center space-x-2 text-[10px] text-slate-400 mt-0.5">
+                  <span class="font-mono uppercase">${cat.color}</span>
+                  <span>•</span>
+                  <span>${eventsUsingCount} agenda terhubung</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center space-x-1">
+              <button onclick="editCategory('${cat.id}')" title="Edit Kategori" class="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition">
+                <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+              </button>
+              <button onclick="deleteCategory('${cat.id}')" title="Hapus Kategori" class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    function editCategory(catId) {
+      const cat = AppState.categories[catId];
+      if (!cat) return;
+
+      openCategoryModal();
+      document.getElementById('category-edit-id').value = cat.id;
+      document.getElementById('category-input-name').value = cat.label;
+      document.getElementById('category-is-holiday').checked = !!cat.isHoliday;
+      syncColorInput(cat.color);
+
+      document.getElementById('category-form-title').innerHTML = `
+        <i data-lucide="edit-2" class="w-3.5 h-3.5 text-emerald-600"></i>
+        <span>Edit Kategori: ${cat.label}</span>
+      `;
+      document.getElementById('btn-save-category-label').innerText = "Perbarui Kategori";
+      document.getElementById('btn-cancel-edit-category').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function resetCategoryForm() {
+      document.getElementById('form-category').reset();
+      document.getElementById('category-edit-id').value = '';
+      document.getElementById('category-form-title').innerHTML = `
+        <i data-lucide="plus-circle" class="w-3.5 h-3.5 text-emerald-600"></i>
+        <span>Tambah Kategori Baru</span>
+      `;
+      document.getElementById('btn-save-category-label').innerText = "Simpan Kategori";
+      document.getElementById('btn-cancel-edit-category').classList.add('hidden');
+      selectPaletteColor('#059669');
+      lucide.createIcons();
+    }
+
+    function handleCategorySubmit(e) {
+      e.preventDefault();
+      const editId = document.getElementById('category-edit-id').value;
+      const label = document.getElementById('category-input-name').value.trim();
+      const color = document.getElementById('category-color-hex').value.trim().toUpperCase() || '#059669';
+      const isHoliday = document.getElementById('category-is-holiday').checked;
+
+      if (!label) {
+        showToast("Nama kategori tidak boleh kosong", "error");
+        return;
+      }
+
+      const id = editId || 'cat_' + Date.now().toString(36);
+      const currentCats = { ...AppState.categories };
+
+      currentCats[id] = {
+        id,
+        label,
+        color,
+        isHoliday
+      };
+
+      AppState.saveCategories(currentCats);
+
+      // Sinkronisasi ke Supabase jika mode live
+      if (!is_preview && supabaseClient) {
+        supabaseClient.from('kaldik_categories').upsert({
+          id,
+          label,
+          color,
+          is_holiday: isHoliday
+        }).then(({ error }) => {
+          if (error) console.error("Supabase category error:", error);
+        });
+      }
+
+      renderLegend();
+      renderCalendar();
+      renderCategoryManagerList();
+      resetCategoryForm();
+      showToast(editId ? "Kategori berhasil diperbarui" : "Kategori baru berhasil ditambahkan", "success");
+    }
+
+    function deleteCategory(catId) {
+      const cat = AppState.categories[catId];
+      if (!cat) return;
+
+      const eventsCount = AppState.events.filter(e => e.category === catId).length;
+      if (eventsCount > 0) {
+        if (!confirm(`Kategori "${cat.label}" sedang digunakan oleh ${eventsCount} agenda. Menghapus kategori ini akan memindahkan agenda tersebut ke kategori default. Lanjutkan?`)) {
+          return;
+        }
+        // Migrasi agenda ke default
+        const updatedEvents = AppState.events.map(ev => {
+          if (ev.category === catId) {
+            return { ...ev, category: 'efektif_khusus' };
+          }
+          return ev;
+        });
+        AppState.saveEvents(updatedEvents);
+      }
+
+      const currentCats = { ...AppState.categories };
+      delete currentCats[catId];
+      AppState.saveCategories(currentCats);
+
+      if (!is_preview && supabaseClient) {
+        supabaseClient.from('kaldik_categories').delete().eq('id', catId);
+      }
+
+      renderLegend();
+      renderCalendar();
+      renderCategoryManagerList();
+      showToast(`Kategori "${cat.label}" berhasil dihapus`, "info");
+    }
+
+    function confirmResetCategories() {
+      if (!confirm("Kembalikan semua kategori ke susunan palet standar Kaldik?")) return;
+      AppState.saveCategories(DEFAULT_CATEGORIES);
+      renderLegend();
+      renderCalendar();
+      renderCategoryManagerList();
+      resetCategoryForm();
+      showToast("Kategori berhasil dikembalikan ke standar", "success");
+    }
+
+    function switchSemester(sem) {
+      AppState.setSemester(sem);
+
+      const btns = {
+        gasal: document.getElementById('btn-sem-gasal'),
+        genap: document.getElementById('btn-sem-genap'),
+        full: document.getElementById('btn-sem-full')
+      };
+
+      Object.keys(btns).forEach(key => {
+        if (key === sem) {
+          btns[key].className = "px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all shadow-sm bg-white text-slate-800";
+        } else {
+          btns[key].className = "px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all text-slate-600 hover:text-slate-900";
+        }
+      });
+
+      renderCalendar();
+      showToast(`Beralih ke tampilan Semester ${sem.toUpperCase()}`, 'info');
+    }
+
+    function handleDayClick(dateStr) {
+      const existing = getEventForDate(dateStr);
+      if (existing) {
+        editEvent(existing.id);
+      } else {
+        openEventModal({ start_date: dateStr, end_date: dateStr });
+      }
+    }
+
+    function openEventModal(initialData = null) {
+      const modal = document.getElementById('modal-event');
+      const form = document.getElementById('form-event');
+      const title = document.getElementById('modal-event-title');
+      const btnDelete = document.getElementById('btn-delete-event');
+
+      form.reset();
+      document.getElementById('event-id').value = '';
+      populateCategoryDropdown();
+
+      if (initialData && initialData.id) {
+        title.innerHTML = `<i data-lucide="edit-3" class="w-4 h-4 text-emerald-600"></i><span>Edit Agenda Kaldik</span>`;
+        document.getElementById('event-id').value = initialData.id;
+        document.getElementById('event-title').value = initialData.title;
+        document.getElementById('event-start-date').value = initialData.start_date;
+        document.getElementById('event-end-date').value = initialData.end_date;
+        document.getElementById('event-category').value = initialData.category;
+        document.getElementById('event-description').value = initialData.description || '';
+        btnDelete.classList.remove('hidden');
+      } else {
+        title.innerHTML = `<i data-lucide="calendar-plus" class="w-4 h-4 text-emerald-600"></i><span>Tambah Agenda Kaldik</span>`;
+        btnDelete.classList.add('hidden');
+        if (initialData && initialData.start_date) {
+          document.getElementById('event-start-date').value = initialData.start_date;
+          document.getElementById('event-end-date').value = initialData.end_date;
+        }
+      }
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      lucide.createIcons();
+    }
+
+    function closeEventModal() {
+      const modal = document.getElementById('modal-event');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function editEvent(id) {
+      const ev = AppState.events.find(e => e.id === id);
+      if (ev) {
+        openEventModal(ev);
+      }
+    }
+
+    async function handleEventSubmit(e) {
+      e.preventDefault();
+      const id = document.getElementById('event-id').value;
+      const title = document.getElementById('event-title').value.trim();
+      const start_date = document.getElementById('event-start-date').value;
+      const end_date = document.getElementById('event-end-date').value;
+      const category = document.getElementById('event-category').value;
+      const description = document.getElementById('event-description').value.trim();
+
+      if (end_date < start_date) {
+        showToast("Tanggal selesai tidak boleh sebelum tanggal mulai", "error");
+        return;
+      }
+
+      const payload = {
+        id: id || undefined,
+        title,
+        start_date,
+        end_date,
+        category,
+        description
+      };
+
+      try {
+        await DataService.saveEvent(payload);
+        closeEventModal();
+        renderCalendar();
+        showToast(id ? "Agenda berhasil diperbarui" : "Agenda baru berhasil ditambahkan", "success");
+      } catch (err) {
+        showToast("Gagal menyimpan agenda", "error");
+      }
+    }
+
+    async function confirmDeleteEvent() {
+      const id = document.getElementById('event-id').value;
+      if (!id) return;
+
+      try {
+        await DataService.deleteEvent(id);
+        closeEventModal();
+        renderCalendar();
+        showToast("Agenda berhasil dihapus", "info");
+      } catch (err) {
+        showToast("Gagal menghapus agenda", "error");
+      }
+    }
+
+    function openSchoolModal() {
+      const modal = document.getElementById('modal-school');
+      const sc = AppState.school;
+      
+      document.getElementById('school-instansi').value = sc.instansi || '';
+      document.getElementById('school-name').value = sc.name || '';
+      document.getElementById('school-npsn').value = sc.npsn || '';
+      document.getElementById('school-year').value = sc.year || '';
+      document.getElementById('school-address').value = sc.address || '';
+      document.getElementById('school-city').value = sc.city || '';
+      document.getElementById('school-doc-date').value = sc.docDate || '';
+      document.getElementById('school-principal').value = sc.principal || '';
+      document.getElementById('school-principal-nip').value = sc.principalNip || '';
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeSchoolModal() {
+      const modal = document.getElementById('modal-school');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    /* ==========================================================================
+       MODAL EKSPOR PDF A4 (SEMESTER & ORIENTASI)
+       ========================================================================== */
+
+    function openExportModal() {
+      const modal = document.getElementById('modal-export');
+      const currentScope = AppState.currentSemester || 'gasal';
+      const scopeRadio = document.querySelector(`input[name="export-scope"][value="${currentScope}"]`);
+      if (scopeRadio) scopeRadio.checked = true;
+      handleExportScopeChange();
+      handleExportOrientChange();
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      lucide.createIcons();
+    }
+
+    function closeExportModal() {
+      const modal = document.getElementById('modal-export');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function handleExportScopeChange() {
+      const selected = document.querySelector('input[name="export-scope"]:checked')?.value || 'gasal';
+      ['gasal', 'genap', 'full'].forEach(sc => {
+        const el = document.getElementById(`label-scope-${sc}`);
+        if (el) {
+          if (sc === selected) {
+            el.className = "relative flex flex-col p-3 border-2 border-emerald-500 bg-emerald-50/30 rounded-xl cursor-pointer hover:border-emerald-600 transition";
+          } else {
+            el.className = "relative flex flex-col p-3 border-2 border-slate-200 rounded-xl cursor-pointer hover:border-slate-300 transition";
+          }
+        }
+      });
+    }
+
+    function handleExportOrientChange() {
+      const selected = document.querySelector('input[name="export-orient"]:checked')?.value || 'landscape';
+      ['landscape', 'portrait'].forEach(or => {
+        const el = document.getElementById(`label-orient-${or}`);
+        if (el) {
+          if (or === selected) {
+            el.className = "flex items-center space-x-3 p-3 border-2 border-emerald-500 bg-emerald-50/30 rounded-xl cursor-pointer hover:border-emerald-600 transition";
+          } else {
+            el.className = "flex items-center space-x-3 p-3 border-2 border-slate-200 rounded-xl cursor-pointer hover:border-slate-300 transition";
+          }
+        }
+      });
+    }
+
+    function executeExportPdf() {
+      const scope = document.querySelector('input[name="export-scope"]:checked')?.value || 'gasal';
+      const orientation = document.querySelector('input[name="export-orient"]:checked')?.value || 'landscape';
+      const includeTable = document.getElementById('export-include-table')?.checked ?? true;
+
+      const previousSemester = AppState.currentSemester;
+
+      AppState.setSemester(scope);
+      renderCalendar();
+
+      const dynamicStyle = document.getElementById('dynamic-print-page-style');
+      const pageMargin = orientation === 'landscape' ? '6mm 8mm 6mm 8mm' : '8mm 8mm 8mm 8mm';
+      dynamicStyle.innerHTML = `
+        @media print {
+          @page {
+            size: A4 ${orientation};
+            margin: ${pageMargin};
+          }
+        }
+      `;
+
+      document.body.classList.remove('print-mode-landscape', 'print-mode-portrait', 'print-scope-gasal', 'print-scope-genap', 'print-scope-full');
+      document.body.classList.add(`print-mode-${orientation}`);
+      document.body.classList.add(`print-scope-${scope}`);
+
+      const printAppendix = document.querySelector('.print-only.mt-4.page-break');
+      if (printAppendix) {
+        if (!includeTable) {
+          printAppendix.style.display = 'none';
+        } else {
+          printAppendix.style.display = '';
+        }
+      }
+
+      closeExportModal();
+      showToast(`Mempersiapkan dokumen A4 (${scope.toUpperCase()}, ${orientation.toUpperCase()})...`, 'info');
+
+      setTimeout(() => {
+        window.print();
+
+        setTimeout(() => {
+          if (previousSemester !== scope) {
+            AppState.setSemester(previousSemester);
+            renderCalendar();
+          }
+          if (printAppendix) printAppendix.style.display = '';
+        }, 500);
+      }, 350);
+    }
+
+    function handleSchoolSubmit(e) {
+      e.preventDefault();
+      const updated = {
+        instansi: document.getElementById('school-instansi').value.trim(),
+        name: document.getElementById('school-name').value.trim(),
+        npsn: document.getElementById('school-npsn').value.trim(),
+        year: document.getElementById('school-year').value.trim(),
+        address: document.getElementById('school-address').value.trim(),
+        city: document.getElementById('school-city').value.trim(),
+        docDate: document.getElementById('school-doc-date').value.trim(),
+        principal: document.getElementById('school-principal').value.trim(),
+        principalNip: document.getElementById('school-principal-nip').value.trim(),
+      };
+
+      AppState.saveSchool(updated);
+      renderSchoolIdentity();
+      renderCalendar();
+      closeSchoolModal();
+      showToast("KOP & Profil Madrasah berhasil disimpan", "success");
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      lucide.createIcons();
+
+      const badge = document.getElementById('preview-badge');
+      if (!is_preview) {
+        badge.innerText = "Supabase Live";
+        badge.className = "px-2 py-0.5 text-[10px] font-semibold bg-emerald-100 text-emerald-800 rounded-full border border-emerald-200";
+      }
+
+      renderSchoolIdentity();
+      renderLegend();
+      await DataService.getEvents();
+      renderCalendar();
+    });
+
+    /* ==========================================================================
+       5. SISTEM BACKUP DAN RESTORE FILE JSON
+       ========================================================================== */
+
+    let pendingBackupData = null;
+
+    function openBackupModal() {
+      const modal = document.getElementById('modal-backup');
+      const badge = document.getElementById('backup-status-badge');
+      const totalEvents = AppState.events.length;
+      const schoolName = AppState.school.name || 'Sekolah';
+      const year = AppState.school.year || '2026/2027';
+
+      badge.innerText = `${totalEvents} Agenda • ${schoolName} (${year})`;
+      resetRestoreState();
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      lucide.createIcons();
+    }
+
+    function closeBackupModal() {
+      const modal = document.getElementById('modal-backup');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      resetRestoreState();
+    }
+
+    function resetRestoreState() {
+      pendingBackupData = null;
+      const fileInput = document.getElementById('backup-file-input');
+      if (fileInput) fileInput.value = '';
+
+      const previewBox = document.getElementById('restore-preview-box');
+      const optionsBox = document.getElementById('restore-options-box');
+      const btnExecute = document.getElementById('btn-execute-restore');
+
+      if (previewBox) previewBox.classList.add('hidden');
+      if (optionsBox) optionsBox.classList.add('hidden');
+      if (btnExecute) {
+        btnExecute.disabled = true;
+        btnExecute.className = "px-5 py-2 bg-slate-300 text-slate-500 cursor-not-allowed rounded-lg font-semibold shadow-sm transition flex items-center space-x-1.5";
+      }
+    }
+
+    function downloadBackupJSON() {
+      try {
+        const backupPayload = {
+          app: "KaldikPro",
+          version: "1.2",
+          exported_at: new Date().toISOString(),
+          school: AppState.school,
+          categories: AppState.categories,
+          events: AppState.events
+        };
+
+        const jsonString = JSON.stringify(backupPayload, null, 2);
+        const blob = new Blob([jsonString], { type: "application/json;charset=utf-8;" });
+        const sanitizedYear = (AppState.school.year || '2026-2027').replace(/[^a-zA-Z0-9_-]/g, '-');
+        const dateStamp = new Date().toISOString().slice(0, 10);
+        const fileName = `kaldik-backup-${sanitizedYear}-${dateStamp}.json`;
+
+        const downloadLink = document.createElement('a');
+        downloadLink.href = URL.createObjectURL(blob);
+        downloadLink.download = fileName;
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+        URL.revokeObjectURL(downloadLink.href);
+
+        showToast("File backup JSON berhasil diunduh (termasuk Kategori & Warna)", "success");
+      } catch (err) {
+        console.error("Gagal membuat backup JSON:", err);
+        showToast("Gagal mengunduh file backup JSON", "error");
+      }
+    }
+
+    function handleBackupFileSelect(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const content = e.target.result;
+          const parsed = JSON.parse(content);
+
+          let detectedEvents = [];
+          let detectedSchool = null;
+          let detectedCategories = null;
+
+          if (Array.isArray(parsed)) {
+            detectedEvents = parsed;
+          } else if (typeof parsed === 'object' && parsed !== null) {
+            detectedEvents = Array.isArray(parsed.events) ? parsed.events : [];
+            detectedSchool = parsed.school && typeof parsed.school === 'object' ? parsed.school : null;
+            detectedCategories = parsed.categories && typeof parsed.categories === 'object' ? parsed.categories : null;
+          }
+
+          if (detectedEvents.length === 0 && !detectedSchool && !detectedCategories) {
+            showToast("Format JSON tidak valid atau tidak memiliki data kaldik", "error");
+            resetRestoreState();
+            return;
+          }
+
+          pendingBackupData = {
+            school: detectedSchool,
+            categories: detectedCategories,
+            events: detectedEvents
+          };
+
+          const previewBox = document.getElementById('restore-preview-box');
+          const optionsBox = document.getElementById('restore-options-box');
+          const btnExecute = document.getElementById('btn-execute-restore');
+
+          document.getElementById('preview-filename').innerText = file.name;
+          document.getElementById('preview-filesize').innerText = `${(file.size / 1024).toFixed(1)} KB`;
+          document.getElementById('preview-school-info').innerText = detectedSchool?.name 
+            ? `Profil Sekolah: ${detectedSchool.name} (${detectedSchool.year || '-'})` 
+            : 'Profil Sekolah: (Mempertahankan profil yang sedang aktif)';
+          document.getElementById('preview-events-info').innerText = `Total: ${detectedEvents.length} agenda, ${detectedCategories ? Object.keys(detectedCategories).length : 0} kategori khusus`;
+
+          previewBox.classList.remove('hidden');
+          optionsBox.classList.remove('hidden');
+
+          btnExecute.disabled = false;
+          btnExecute.className = "px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold shadow-sm transition flex items-center space-x-1.5 cursor-pointer";
+          
+          lucide.createIcons();
+          showToast("File backup berhasil dibaca dan siap dipulihkan", "info");
+        } catch (err) {
+          console.error("Kesalahan parsing JSON:", err);
+          showToast("Berkas yang dipilih bukan file JSON yang valid", "error");
+          resetRestoreState();
+        }
+      };
+
+      reader.readAsText(file);
+    }
+
+    async function executeRestoreJSON() {
+      if (!pendingBackupData) {
+        showToast("Tidak ada data file backup yang siap dipulihkan", "error");
+        return;
+      }
+
+      const mode = document.querySelector('input[name="restore-mode"]:checked')?.value || 'overwrite';
+      const incomingEvents = pendingBackupData.events || [];
+      const incomingSchool = pendingBackupData.school;
+      const incomingCategories = pendingBackupData.categories;
+
+      try {
+        if (incomingSchool) {
+          AppState.saveSchool({
+            ...AppState.school,
+            ...incomingSchool
+          });
+        }
+
+        if (incomingCategories) {
+          if (mode === 'overwrite') {
+            AppState.saveCategories(incomingCategories);
+          } else {
+            AppState.saveCategories({
+              ...AppState.categories,
+              ...incomingCategories
+            });
+          }
+        }
+
+        let finalEvents = [];
+        if (mode === 'overwrite') {
+          finalEvents = incomingEvents.map(item => ({
+            ...item,
+            id: item.id || 'id_' + Math.random().toString(36).substr(2, 9)
+          }));
+        } else {
+          const existingIds = new Set(AppState.events.map(e => String(e.id)));
+          finalEvents = [...AppState.events];
+
+          incomingEvents.forEach(newItem => {
+            const safeItem = {
+              ...newItem,
+              id: newItem.id || 'id_' + Math.random().toString(36).substr(2, 9)
+            };
+
+            if (existingIds.has(String(safeItem.id))) {
+              safeItem.id = 'id_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+            }
+            finalEvents.push(safeItem);
+          });
+        }
+
+        AppState.saveEvents(finalEvents);
+
+        if (!is_preview && supabaseClient) {
+          showToast("Menyinkronkan data ke database Supabase...", "info");
+          if (incomingSchool) await supabaseClient.from('school_profile').upsert(AppState.school);
+          if (incomingCategories) {
+            const catArray = Object.values(AppState.categories).map(c => ({
+              id: c.id,
+              label: c.label,
+              color: c.color,
+              is_holiday: c.isHoliday
+            }));
+            await supabaseClient.from('kaldik_categories').upsert(catArray);
+          }
+          if (mode === 'overwrite') {
+            await supabaseClient.from('kaldik_events').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+          }
+          if (finalEvents.length > 0) {
+            await supabaseClient.from('kaldik_events').upsert(finalEvents);
+          }
+        }
+
+        renderSchoolIdentity();
+        renderLegend();
+        renderCalendar();
+        closeBackupModal();
+
+        showToast(`Berhasil memulihkan ${finalEvents.length} agenda & palet kategori`, "success");
+      } catch (err) {
+        console.error("Gagal melakukan pemulihan JSON:", err);
+        showToast("Terjadi kesalahan saat memulihkan data", "error");
+      }
+    }
+  </script>
+</body>
+</html>
