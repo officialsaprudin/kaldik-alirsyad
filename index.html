@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Kaldik Pro - Kalender Pendidikan Madrasah & Sekolah</title>
-  <link rel="icon" type="image/png" href="poto.png">
+  <link rel="icon" type="image/png" href="MI.png">
   
   <!-- Google Fonts: Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -550,6 +550,15 @@
                 <button type="button" onclick="setPresetLogo('kemenag')" class="px-1.5 py-0.5 text-[9px] bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded border border-emerald-200 font-medium">Kemenag RI</button>
                 <button type="button" onclick="setPresetLogo('kemdikbud')" class="px-1.5 py-0.5 text-[9px] bg-blue-50 text-blue-700 hover:bg-blue-100 rounded border border-blue-200 font-medium">Kemdikbud</button>
               </div>
+
+              <!-- Slider Ukuran Logo 1 (Kiri) -->
+              <div class="flex items-center justify-between pt-1.5 border-t border-slate-100 text-[10px]">
+                <span class="text-slate-600 font-medium">Ukuran Logo Kiri:</span>
+                <div class="flex items-center space-x-1.5">
+                  <input type="range" id="school-logo-size-kiri" min="30" max="100" value="55" oninput="document.getElementById('val-logo-size-kiri').innerText = this.value + 'px'" class="w-20 h-1.5 bg-slate-200 rounded-lg accent-emerald-600 cursor-pointer">
+                  <span id="val-logo-size-kiri" class="font-mono text-slate-700 w-8 text-right font-bold">55px</span>
+                </div>
+              </div>
             </div>
 
             <!-- 2. Logo Sekolah / Madrasah (Kanan) -->
@@ -582,6 +591,15 @@
 
               <div class="text-[9px] text-slate-400 pt-1 border-t border-slate-100">
                 Format: PNG transparan, JPG, atau WebP (Disarankan rasio 1:1)
+              </div>
+
+              <!-- Slider Ukuran Logo 2 (Kanan) -->
+              <div class="flex items-center justify-between pt-1.5 border-t border-slate-100 text-[10px]">
+                <span class="text-slate-600 font-medium">Ukuran Logo Kanan:</span>
+                <div class="flex items-center space-x-1.5">
+                  <input type="range" id="school-logo-size-kanan" min="30" max="100" value="55" oninput="document.getElementById('val-logo-size-kanan').innerText = this.value + 'px'" class="w-20 h-1.5 bg-slate-200 rounded-lg accent-emerald-600 cursor-pointer">
+                  <span id="val-logo-size-kanan" class="font-mono text-slate-700 w-8 text-right font-bold">55px</span>
+                </div>
               </div>
             </div>
           </div>
@@ -878,7 +896,7 @@
     const is_preview = false; // UBAH KE false UNTUK MENGHUBUNGKAN KE SUPABASE ASLI
 
     const SUPABASE_URL = "https://pevqnrmqicdwclkfcnon.supabase.co";
-    const SUPABASE_ANON_KEY = "sb_publishable_37Ueo6gkxrU2fPRNqkHiMQ_6RWdSmhI";;
+    const SUPABASE_ANON_KEY = "sb_publishable_37Ueo6gkxrU2fPRNqkHiMQ_6RWdSmhI";
 
     let supabaseClient = null;
     if (!is_preview && typeof supabase !== 'undefined') {
@@ -985,7 +1003,9 @@
       principal: "Dr. H. Ahmad Fauzi, M.Pd",
       principalNip: "19780512 200312 1 004",
       logoKementerian: PRESET_LOGOS.kemenag,
-      logoSekolah: ""
+      logoSekolah: "",
+      logoKiriSize: 55,
+      logoKananSize: 55
     };
 
     const AppState = {
@@ -1986,20 +2006,30 @@
 
     function generatePrintKopHTML(docTitle, isCompact = false) {
       const sc = AppState.school;
-      const logoSize = isCompact ? 'w-12 h-12' : 'w-14 h-14';
+      const rawKiri = parseInt(sc.logoKiriSize || 55, 10);
+      const rawKanan = parseInt(sc.logoKananSize || 55, 10);
       
+      const sizeKiri = isCompact ? Math.round(rawKiri * 0.85) : rawKiri;
+      const sizeKanan = isCompact ? Math.round(rawKanan * 0.85) : rawKanan;
+
+      const styleKiri = `height: ${sizeKiri}px; max-width: ${Math.round(sizeKiri * 1.6)}px; object-fit: contain;`;
+      const styleKanan = `height: ${sizeKanan}px; max-width: ${Math.round(sizeKanan * 1.6)}px; object-fit: contain;`;
+      
+      const boxKiriStyle = `height: ${sizeKiri}px; min-width: ${sizeKiri}px;`;
+      const boxKananStyle = `height: ${sizeKanan}px; min-width: ${sizeKanan}px;`;
+
       const logoKiri = sc.logoKementerian && sc.logoKementerian.trim()
-        ? `<img src="${sc.logoKementerian}" class="${logoSize} object-contain" alt="Logo Kementerian">`
-        : `<div class="${logoSize} flex items-center justify-center border border-dashed border-slate-300 rounded text-slate-400 font-bold text-[8px]">LOGO 1</div>`;
+        ? `<img src="${sc.logoKementerian}" style="${styleKiri}" alt="Logo Kementerian">`
+        : `<div style="${boxKiriStyle}" class="flex items-center justify-center border border-dashed border-slate-300 rounded text-slate-400 font-bold text-[8px]">LOGO 1</div>`;
 
       const logoKanan = sc.logoSekolah && sc.logoSekolah.trim()
-        ? `<img src="${sc.logoSekolah}" class="${logoSize} object-contain" alt="Logo Sekolah">`
-        : `<div class="${logoSize} flex items-center justify-center border border-dashed border-slate-300 rounded text-slate-400 font-bold text-[8px]">LOGO 2</div>`;
+        ? `<img src="${sc.logoSekolah}" style="${styleKanan}" alt="Logo Sekolah">`
+        : `<div style="${boxKananStyle}" class="flex items-center justify-center border border-dashed border-slate-300 rounded text-slate-400 font-bold text-[8px]">LOGO 2</div>`;
 
       return `
         <div class="print-avoid-break border-b-2 border-slate-900 pb-2 mb-2 text-center">
           <div class="flex items-center justify-between px-1">
-            <div class="${logoSize} flex items-center justify-center flex-shrink-0">
+            <div style="${boxKiriStyle}" class="flex items-center justify-center flex-shrink-0">
               ${logoKiri}
             </div>
             <div class="flex-1 text-center px-3">
@@ -2010,7 +2040,7 @@
                 <span class="${isCompact ? 'text-[9.5px]' : 'text-[10.5px]'} font-bold tracking-wide uppercase text-slate-900">${docTitle}</span>
               </div>
             </div>
-            <div class="${logoSize} flex items-center justify-center flex-shrink-0">
+            <div style="${boxKananStyle}" class="flex items-center justify-center flex-shrink-0">
               ${logoKanan}
             </div>
           </div>
@@ -2315,48 +2345,67 @@
       closeSchoolModal();
       showToast("KOP, Profil, dan Logo berhasil disimpan", "success");
     }
+    function openSchoolModal() {
+      const modal = document.getElementById('modal-school');
+      const sc = AppState.school;
+      
+      document.getElementById('school-instansi').value = sc.instansi || '';
+      document.getElementById('school-name').value = sc.name || '';
+      document.getElementById('school-npsn').value = sc.npsn || '';
+      document.getElementById('school-year').value = sc.year || '';
+      document.getElementById('school-address').value = sc.address || '';
+      document.getElementById('school-city').value = sc.city || '';
+      document.getElementById('school-doc-date').value = sc.docDate || '';
+      document.getElementById('school-principal').value = sc.principal || '';
+      document.getElementById('school-principal-nip').value = sc.principalNip || '';
 
-    window.addEventListener('DOMContentLoaded', async () => {
-      lucide.createIcons();
+      document.getElementById('school-logo-kementerian').value = sc.logoKementerian || '';
+      document.getElementById('school-logo-sekolah').value = sc.logoSekolah || '';
+      updateLogoPreview('kementerian', sc.logoKementerian || '');
+      updateLogoPreview('sekolah', sc.logoSekolah || '');
 
-      const badge = document.getElementById('preview-badge');
-      if (!is_preview) {
-        badge.innerText = "Supabase Live";
-        badge.className = "px-2 py-0.5 text-[10px] font-semibold bg-emerald-100 text-emerald-800 rounded-full border border-emerald-200";
+      const sizeKiri = sc.logoKiriSize || 55;
+      const sizeKanan = sc.logoKananSize || 55;
+      const sliderKiri = document.getElementById('school-logo-size-kiri');
+      const sliderKanan = document.getElementById('school-logo-size-kanan');
+      if (sliderKiri) {
+        sliderKiri.value = sizeKiri;
+        document.getElementById('val-logo-size-kiri').innerText = sizeKiri + 'px';
       }
-
-      renderSchoolIdentity();
-      renderLegend();
-      await DataService.getEvents();
-      renderCalendar();
-    });
-
-    /* ==========================================================================
-       5. SISTEM BACKUP DAN RESTORE FILE JSON
-       ========================================================================== */
-
-    let pendingBackupData = null;
-
-    function openBackupModal() {
-      const modal = document.getElementById('modal-backup');
-      const badge = document.getElementById('backup-status-badge');
-      const totalEvents = AppState.events.length;
-      const schoolName = AppState.school.name || 'Sekolah';
-      const year = AppState.school.year || '2026/2027';
-
-      badge.innerText = `${totalEvents} Agenda • ${schoolName} (${year})`;
-      resetRestoreState();
+      if (sliderKanan) {
+        sliderKanan.value = sizeKanan;
+        document.getElementById('val-logo-size-kanan').innerText = sizeKanan + 'px';
+      }
 
       modal.classList.remove('hidden');
       modal.classList.add('flex');
       lucide.createIcons();
     }
+    function handleSchoolSubmit(e) {
+      e.preventDefault();
+      const updated = {
+        instansi: document.getElementById('school-instansi').value.trim(),
+        name: document.getElementById('school-name').value.trim(),
+        npsn: document.getElementById('school-npsn').value.trim(),
+        year: document.getElementById('school-year').value.trim(),
+        address: document.getElementById('school-address').value.trim(),
+        city: document.getElementById('school-city').value.trim(),
+        docDate: document.getElementById('school-doc-date').value.trim(),
+        principal: document.getElementById('school-principal').value.trim(),
+        principalNip: document.getElementById('school-principal-nip').value.trim(),
+        logoKementerian: document.getElementById('school-logo-kementerian').value.trim(),
+        logoSekolah: document.getElementById('school-logo-sekolah').value.trim(),
+        logo_kementerian: document.getElementById('school-logo-kementerian').value.trim(),
+        logo_sekolah: document.getElementById('school-logo-sekolah').value.trim(),
+        logoKiriSize: parseInt(document.getElementById('school-logo-size-kiri')?.value || 55, 10),
+        logoKananSize: parseInt(document.getElementById('school-logo-size-kanan')?.value || 55, 10)
+      };
 
-    function closeBackupModal() {
-      const modal = document.getElementById('modal-backup');
-      modal.classList.add('hidden');
-      modal.classList.remove('flex');
-      resetRestoreState();
+      AppState.saveSchool(updated);
+      renderSchoolIdentity();
+      renderCalendar();
+      closeSchoolModal();
+      showToast("KOP, Profil, dan Logo berhasil disimpan", "success");
     }
 
     function resetRestoreState() {
