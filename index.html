@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Kaldik Pro - Kalender Pendidikan Madrasah & Sekolah</title>
   <link rel="icon" type="image/png" href="poto.png">
+  
   <!-- Google Fonts: Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -225,9 +226,14 @@
 
     <div id="print-header" class="hidden print:block mb-4 border-b-2 border-slate-900 pb-3 text-center">
       <div class="flex items-center justify-between px-2">
-        <div class="w-16 h-16 flex items-center justify-center border border-dashed border-slate-300 rounded" id="kop-logo-container">
-          <i data-lucide="school" class="w-10 h-10 text-slate-800"></i>
+        <!-- Logo Kiri: Kementerian / Yayasan -->
+        <div class="w-16 h-16 flex items-center justify-center" id="kop-logo-kiri-wrap">
+          <div class="w-16 h-16 flex items-center justify-center border border-dashed border-slate-300 rounded" id="kop-logo-kiri-default">
+            <i data-lucide="building" class="w-9 h-9 text-slate-700"></i>
+          </div>
+          <img id="kop-logo-kiri-img" src="" alt="Logo Kementerian" class="hidden w-16 h-16 max-h-16 max-w-16 object-contain">
         </div>
+
         <div class="flex-1 text-center px-4">
           <h2 id="kop-nama-yayasan" class="text-xs font-bold uppercase tracking-wider text-slate-700">KEMENTERIAN AGAMA REPUBLIK INDONESIA</h2>
           <h1 id="kop-nama-sekolah" class="text-lg font-extrabold uppercase text-slate-900 leading-tight">MADRASAH ALIYAH NEGERI 1 MODEL</h1>
@@ -236,8 +242,13 @@
             <span class="text-[11px] font-bold tracking-wide uppercase" id="kop-doc-title">KALENDER PENDIDIKAN TAHUN AJARAN 2026/2027</span>
           </div>
         </div>
-        <div class="w-16 h-16 flex items-center justify-center border border-dashed border-slate-300 rounded text-slate-400 text-[10px] text-center">
-          Kemenag / Kemdikbud
+
+        <!-- Logo Kanan: Sekolah / Madrasah -->
+        <div class="w-16 h-16 flex items-center justify-center" id="kop-logo-kanan-wrap">
+          <div class="w-16 h-16 flex items-center justify-center border border-dashed border-slate-300 rounded" id="kop-logo-kanan-default">
+            <i data-lucide="school" class="w-9 h-9 text-slate-700"></i>
+          </div>
+          <img id="kop-logo-kanan-img" src="" alt="Logo Sekolah" class="hidden w-16 h-16 max-h-16 max-w-16 object-contain">
         </div>
       </div>
     </div>
@@ -516,7 +527,7 @@
   </div>
 
   <div id="modal-school" class="no-print fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden transition-all border border-slate-100">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden transition-all border border-slate-100 max-h-[92vh] flex flex-col">
       <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
         <h3 class="font-bold text-sm text-slate-800 flex items-center space-x-2">
           <i data-lucide="building-2" class="w-4 h-4 text-emerald-600"></i>
@@ -527,7 +538,86 @@
         </button>
       </div>
 
-      <form id="form-school" onsubmit="handleSchoolSubmit(event)" class="p-6 space-y-4 text-xs">
+      <form id="form-school" onsubmit="handleSchoolSubmit(event)" class="p-6 space-y-4 text-xs overflow-y-auto flex-1">
+        <!-- Pengaturan Logo KOP (Kementerian & Sekolah) -->
+        <div class="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/90 space-y-3">
+          <h4 class="font-bold text-slate-800 text-xs flex items-center space-x-1.5">
+            <i data-lucide="image" class="w-3.5 h-3.5 text-emerald-600"></i>
+            <span>Logo KOP Dokumen (Kementerian & Madrasah / Sekolah)</span>
+          </h4>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            <!-- 1. Logo Kementerian / Yayasan (Kiri) -->
+            <div class="p-2.5 bg-white rounded-lg border border-slate-200 space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="font-semibold text-slate-700 text-[11px]">Logo 1: Kementerian / Yayasan</span>
+                <span class="text-[9px] text-slate-400">Kiri KOP</span>
+              </div>
+
+              <!-- Preview box -->
+              <div class="flex items-center space-x-2.5">
+                <div class="w-12 h-12 rounded border border-slate-200 flex items-center justify-center bg-slate-50 overflow-hidden flex-shrink-0" id="preview-logo-kemen-box">
+                  <i data-lucide="building" class="w-6 h-6 text-slate-400" id="preview-logo-kemen-icon"></i>
+                  <img id="preview-logo-kemen-img" class="w-full h-full object-contain hidden" alt="Logo Kementerian">
+                </div>
+                <div class="flex-1 space-y-1">
+                  <input type="text" id="school-logo-kementerian" placeholder="URL Logo (https://...)" oninput="updateLogoPreview('kementerian', this.value)" class="w-full px-2 py-1 text-[11px] border border-slate-300 rounded focus:ring-1 focus:ring-emerald-500 font-mono">
+                  <div class="flex items-center space-x-1">
+                    <button type="button" onclick="document.getElementById('upload-logo-kementerian').click()" class="px-2 py-0.5 text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 rounded font-medium border border-slate-300 flex items-center space-x-1">
+                      <i data-lucide="upload" class="w-2.5 h-2.5"></i>
+                      <span>Upload</span>
+                    </button>
+                    <input type="file" id="upload-logo-kementerian" accept="image/*" onchange="handleLogoFileInput(event, 'kementerian')" class="hidden">
+                    <button type="button" onclick="clearLogo('kementerian')" class="px-1.5 py-0.5 text-[10px] text-rose-600 hover:bg-rose-50 rounded">
+                      Hapus
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Quick Presets -->
+              <div class="flex items-center space-x-1 pt-1 border-t border-slate-100">
+                <span class="text-[9px] text-slate-400">Preset:</span>
+                <button type="button" onclick="setPresetLogo('kemenag')" class="px-1.5 py-0.5 text-[9px] bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded border border-emerald-200 font-medium">Kemenag RI</button>
+                <button type="button" onclick="setPresetLogo('kemdikbud')" class="px-1.5 py-0.5 text-[9px] bg-blue-50 text-blue-700 hover:bg-blue-100 rounded border border-blue-200 font-medium">Kemdikbud</button>
+              </div>
+            </div>
+
+            <!-- 2. Logo Sekolah / Madrasah (Kanan) -->
+            <div class="p-2.5 bg-white rounded-lg border border-slate-200 space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="font-semibold text-slate-700 text-[11px]">Logo 2: Madrasah / Sekolah</span>
+                <span class="text-[9px] text-slate-400">Kanan KOP</span>
+              </div>
+
+              <!-- Preview box -->
+              <div class="flex items-center space-x-2.5">
+                <div class="w-12 h-12 rounded border border-slate-200 flex items-center justify-center bg-slate-50 overflow-hidden flex-shrink-0" id="preview-logo-sekolah-box">
+                  <i data-lucide="school" class="w-6 h-6 text-slate-400" id="preview-logo-sekolah-icon"></i>
+                  <img id="preview-logo-sekolah-img" class="w-full h-full object-contain hidden" alt="Logo Sekolah">
+                </div>
+                <div class="flex-1 space-y-1">
+                  <input type="text" id="school-logo-sekolah" placeholder="URL Logo (https://...)" oninput="updateLogoPreview('sekolah', this.value)" class="w-full px-2 py-1 text-[11px] border border-slate-300 rounded focus:ring-1 focus:ring-emerald-500 font-mono">
+                  <div class="flex items-center space-x-1">
+                    <button type="button" onclick="document.getElementById('upload-logo-sekolah').click()" class="px-2 py-0.5 text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 rounded font-medium border border-slate-300 flex items-center space-x-1">
+                      <i data-lucide="upload" class="w-2.5 h-2.5"></i>
+                      <span>Upload</span>
+                    </button>
+                    <input type="file" id="upload-logo-sekolah" accept="image/*" onchange="handleLogoFileInput(event, 'sekolah')" class="hidden">
+                    <button type="button" onclick="clearLogo('sekolah')" class="px-1.5 py-0.5 text-[10px] text-rose-600 hover:bg-rose-50 rounded">
+                      Hapus
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="text-[9px] text-slate-400 pt-1 border-t border-slate-100">
+                Format: PNG transparan, JPG, atau WebP (Disarankan rasio 1:1)
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div>
           <label class="block font-semibold text-slate-700 mb-1">Nama Yayasan / Instansi Induk</label>
           <input type="text" id="school-instansi" placeholder="KEMENTERIAN AGAMA REPUBLIK INDONESIA" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
@@ -868,6 +958,11 @@
       { id: '17', title: 'Libur Akhir Tahun Ajaran', start_date: '2027-06-21', end_date: '2027-07-10', category: 'libur_semester', description: 'Libur kenaikan kelas' }
     ];
 
+    const PRESET_LOGOS = {
+      kemenag: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Logo_Kemenag.png/240px-Logo_Kemenag.png",
+      kemdikbud: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Logo_of_Ministry_of_Education_and_Culture_of_Republic_of_Indonesia.svg/240px-Logo_of_Ministry_of_Education_and_Culture_of_Republic_of_Indonesia.svg.png"
+    };
+
     const DEFAULT_SCHOOL = {
       instansi: "KEMENTERIAN AGAMA REPUBLIK INDONESIA",
       name: "MADRASAH ALIYAH NEGERI 1 MODEL",
@@ -877,7 +972,9 @@
       city: "Banjarmasin",
       docDate: "15 Juli 2026",
       principal: "Dr. H. Ahmad Fauzi, M.Pd",
-      principalNip: "19780512 200312 1 004"
+      principalNip: "19780512 200312 1 004",
+      logoKementerian: PRESET_LOGOS.kemenag,
+      logoSekolah: ""
     };
 
     const AppState = {
@@ -1019,6 +1116,34 @@
       document.getElementById('print-kota-tanggal').innerText = `${sc.city}, ${sc.docDate}`;
       document.getElementById('print-nama-kepala').innerText = sc.principal;
       document.getElementById('print-nip-kepala').innerText = `NIP. ${sc.principalNip}`;
+
+      renderKopLogos();
+    }
+
+    function renderKopLogos() {
+      const sc = AppState.school;
+      const logoKemenImg = document.getElementById('kop-logo-kiri-img');
+      const logoKemenDef = document.getElementById('kop-logo-kiri-default');
+      const logoSekolahImg = document.getElementById('kop-logo-kanan-img');
+      const logoSekolahDef = document.getElementById('kop-logo-kanan-default');
+
+      if (sc.logoKementerian && sc.logoKementerian.trim()) {
+        logoKemenImg.src = sc.logoKementerian;
+        logoKemenImg.classList.remove('hidden');
+        logoKemenDef.classList.add('hidden');
+      } else {
+        logoKemenImg.classList.add('hidden');
+        logoKemenDef.classList.remove('hidden');
+      }
+
+      if (sc.logoSekolah && sc.logoSekolah.trim()) {
+        logoSekolahImg.src = sc.logoSekolah;
+        logoSekolahImg.classList.remove('hidden');
+        logoSekolahDef.classList.add('hidden');
+      } else {
+        logoSekolahImg.classList.add('hidden');
+        logoSekolahDef.classList.remove('hidden');
+      }
     }
 
     const INDO_MONTHS = [
@@ -1674,14 +1799,77 @@
       document.getElementById('school-principal').value = sc.principal || '';
       document.getElementById('school-principal-nip').value = sc.principalNip || '';
 
+      document.getElementById('school-logo-kementerian').value = sc.logoKementerian || '';
+      document.getElementById('school-logo-sekolah').value = sc.logoSekolah || '';
+      updateLogoPreview('kementerian', sc.logoKementerian || '');
+      updateLogoPreview('sekolah', sc.logoSekolah || '');
+
       modal.classList.remove('hidden');
       modal.classList.add('flex');
+      lucide.createIcons();
     }
 
     function closeSchoolModal() {
       const modal = document.getElementById('modal-school');
       modal.classList.add('hidden');
       modal.classList.remove('flex');
+    }
+
+    function updateLogoPreview(type, url) {
+      const isKemen = type === 'kementerian';
+      const img = document.getElementById(`preview-logo-${isKemen ? 'kemen' : 'sekolah'}-img`);
+      const icon = document.getElementById(`preview-logo-${isKemen ? 'kemen' : 'sekolah'}-icon`);
+      if (url && url.trim()) {
+        img.src = url;
+        img.onload = () => {
+          img.classList.remove('hidden');
+          icon.classList.add('hidden');
+        };
+        img.onerror = () => {
+          img.classList.add('hidden');
+          icon.classList.remove('hidden');
+        };
+      } else {
+        img.classList.add('hidden');
+        icon.classList.remove('hidden');
+      }
+    }
+
+    function handleLogoFileInput(event, type) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      if (file.size > 2 * 1024 * 1024) {
+        showToast("Ukuran berkas logo maksimal 2 MB", "error");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const base64Url = e.target.result;
+        const inputId = type === 'kementerian' ? 'school-logo-kementerian' : 'school-logo-sekolah';
+        document.getElementById(inputId).value = base64Url;
+        updateLogoPreview(type, base64Url);
+        showToast(`Logo ${type} berhasil dimuat dari perangkat`, "success");
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function setPresetLogo(presetKey) {
+      const url = PRESET_LOGOS[presetKey];
+      if (!url) return;
+      document.getElementById('school-logo-kementerian').value = url;
+      updateLogoPreview('kementerian', url);
+      showToast(`Preset logo ${presetKey.toUpperCase()} dipilih`, "info");
+    }
+
+    function clearLogo(type) {
+      const inputId = type === 'kementerian' ? 'school-logo-kementerian' : 'school-logo-sekolah';
+      document.getElementById(inputId).value = '';
+      updateLogoPreview(type, '');
+      const fileInput = document.getElementById(`upload-logo-${type}`);
+      if (fileInput) fileInput.value = '';
+      showToast(`Logo ${type} dikosongkan`, "info");
     }
 
     /* ==========================================================================
@@ -1797,13 +1985,17 @@
         docDate: document.getElementById('school-doc-date').value.trim(),
         principal: document.getElementById('school-principal').value.trim(),
         principalNip: document.getElementById('school-principal-nip').value.trim(),
+        logoKementerian: document.getElementById('school-logo-kementerian').value.trim(),
+        logoSekolah: document.getElementById('school-logo-sekolah').value.trim(),
+        logo_kementerian: document.getElementById('school-logo-kementerian').value.trim(),
+        logo_sekolah: document.getElementById('school-logo-sekolah').value.trim()
       };
 
       AppState.saveSchool(updated);
       renderSchoolIdentity();
       renderCalendar();
       closeSchoolModal();
-      showToast("KOP & Profil Madrasah berhasil disimpan", "success");
+      showToast("KOP, Profil, dan Logo berhasil disimpan", "success");
     }
 
     window.addEventListener('DOMContentLoaded', async () => {
