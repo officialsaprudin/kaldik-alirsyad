@@ -55,14 +55,15 @@
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
       }
-      .no-print {
+      .no-print, header, #screen-main-layout, #modal-event, #modal-categories, #modal-school, #modal-export, #modal-backup, #toast-container {
         display: none !important;
       }
-      .print-only {
+      .print-only, #print-render-container {
         display: block !important;
       }
-      .page-break {
-        page-break-after: always;
+      .page-break, .print-page-break {
+        break-before: page !important;
+        page-break-before: always !important;
       }
       .shadow-sm, .shadow, .shadow-md, .shadow-lg, .shadow-xl {
         box-shadow: none !important;
@@ -71,36 +72,54 @@
         border-color: #cbd5e1 !important;
       }
 
-      /* Dinamis Layout Grid Cetak Berdasarkan Orientasi & Semester */
-      body.print-mode-landscape #months-grid-container {
+      /* Proteksi Mutlak: Elemen kalender & tanda tangan tidak boleh terbelah di perbatasan halaman */
+      .print-avoid-break,
+      .month-card,
+      .print-card,
+      .print-signature-block,
+      tr {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+      }
+
+      /* Grid 6 Bulan (Semester Gasal / Genap) */
+      .print-grid-6-landscape {
         display: grid !important;
         grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
         gap: 6px !important;
       }
-      body.print-mode-landscape.print-scope-full #months-grid-container {
-        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-        gap: 4px !important;
-      }
-
-      body.print-mode-portrait #months-grid-container {
+      .print-grid-6-portrait {
         display: grid !important;
         grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
         gap: 6px !important;
       }
-      body.print-mode-portrait.print-scope-full #months-grid-container {
+
+      /* Grid 12 Bulan (1 Halaman Penuh Poster Compact) */
+      .print-grid-12-landscape {
+        display: grid !important;
+        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+        gap: 3.5px !important;
+      }
+      .print-grid-12-portrait {
+        display: grid !important;
         grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-        gap: 4px !important;
+        gap: 3.5px !important;
       }
 
-      /* Skala sel kalender cetak agar pas 1 halaman A4 */
-      .print-mode-landscape.print-scope-full #months-grid-container .h-7,
-      .print-mode-portrait.print-scope-full #months-grid-container .h-7 {
-        height: 1.35rem !important;
-        font-size: 9px !important;
+      /* Ukuran Kompak Khusus Mode 1 Halaman Poster agar muat presisi 1 lembar A4 */
+      .compact-cell {
+        height: 1.15rem !important;
+        font-size: 8px !important;
+      }
+      .compact-header {
+        padding: 2px 4px !important;
+        font-size: 8.5px !important;
+      }
+      .compact-day-head {
+        font-size: 7.5px !important;
+        padding-bottom: 1px !important;
       }
     }
-
-    /* Target injeksi orientasi halaman dinamis */
   </style>
   <style id="dynamic-print-page-style">
     @media print {
@@ -168,7 +187,8 @@
     </div>
   </header>
 
-  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <!-- Konten Utama Layar Interaktif (Disembunyikan saat mencetak) -->
+  <main id="screen-main-layout" class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 print:hidden">
     
     <!-- Mobile Tab Selector (Visible on small screens) -->
     <div class="no-print md:hidden mb-4 grid grid-cols-3 gap-1 bg-slate-200 p-1 rounded-xl">
@@ -224,41 +244,12 @@
       </div>
     </section>
 
-    <div id="print-header" class="hidden print:block mb-4 border-b-2 border-slate-900 pb-3 text-center">
-      <div class="flex items-center justify-between px-2">
-        <!-- Logo Kiri: Kementerian / Yayasan -->
-        <div class="w-16 h-16 flex items-center justify-center" id="kop-logo-kiri-wrap">
-          <div class="w-16 h-16 flex items-center justify-center border border-dashed border-slate-300 rounded" id="kop-logo-kiri-default">
-            <i data-lucide="building" class="w-9 h-9 text-slate-700"></i>
-          </div>
-          <img id="kop-logo-kiri-img" src="" alt="Logo Kementerian" class="hidden w-16 h-16 max-h-16 max-w-16 object-contain">
-        </div>
-
-        <div class="flex-1 text-center px-4">
-          <h2 id="kop-nama-yayasan" class="text-xs font-bold uppercase tracking-wider text-slate-700">KEMENTERIAN AGAMA REPUBLIK INDONESIA</h2>
-          <h1 id="kop-nama-sekolah" class="text-lg font-extrabold uppercase text-slate-900 leading-tight">MADRASAH ALIYAH NEGERI 1 MODEL</h1>
-          <p id="kop-alamat" class="text-[10px] text-slate-600">Jl. Pendidikan No. 45 Telp. (0511) 7891234 Kota Banjarmasin - NPSN: 30304561</p>
-          <div class="mt-1 inline-block border-t border-slate-800 px-6 pt-0.5">
-            <span class="text-[11px] font-bold tracking-wide uppercase" id="kop-doc-title">KALENDER PENDIDIKAN TAHUN AJARAN 2026/2027</span>
-          </div>
-        </div>
-
-        <!-- Logo Kanan: Sekolah / Madrasah -->
-        <div class="w-16 h-16 flex items-center justify-center" id="kop-logo-kanan-wrap">
-          <div class="w-16 h-16 flex items-center justify-center border border-dashed border-slate-300 rounded" id="kop-logo-kanan-default">
-            <i data-lucide="school" class="w-9 h-9 text-slate-700"></i>
-          </div>
-          <img id="kop-logo-kanan-img" src="" alt="Logo Sekolah" class="hidden w-16 h-16 max-h-16 max-w-16 object-contain">
-        </div>
-      </div>
-    </div>
-
     <!-- Main Content Grid: Calendar + Agenda Sidebar -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
       
-      <div class="lg:col-span-8 print:w-full space-y-6">
-        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm print:p-0 print:border-none print:shadow-none">
-          <div class="no-print flex items-center justify-between mb-4">
+      <div class="lg:col-span-8 space-y-6">
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
             <h3 class="text-sm font-bold text-slate-800 flex items-center space-x-2">
               <i data-lucide="calendar" class="w-4 h-4 text-emerald-600"></i>
               <span id="calendar-view-heading">Grid Kalender Semester Gasal</span>
@@ -270,33 +261,13 @@
           </div>
 
           <!-- The Month Grids Container -->
-          <div id="months-grid-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 print:grid-cols-3 print:gap-2">
+          <div id="months-grid-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <!-- Dynamically populated by JS renderEngine -->
-          </div>
-        </div>
-
-        <div class="print-only mt-4 pt-2 border-t border-slate-300 text-[10px]">
-          <div class="grid grid-cols-3 gap-4 mb-3">
-            <div class="col-span-2">
-              <h5 class="font-bold uppercase text-[9px] mb-1">Catatan Khusus Madrasah / Sekolah:</h5>
-              <ol class="list-decimal pl-4 space-y-0.5 text-[9px] text-slate-700" id="print-notes-list">
-                <li>Hari Efektif Belajar (HEB) tidak termasuk hari libur resmi, jeda tengah semester, dan libur keagamaan.</li>
-                <li>Jadwal Asesmen/Ujian dapat disesuaikan dengan edaran resmi dinas pendidikan/Kemenag wilayah setempat.</li>
-                <li>Pekan Efektif Belajar semester gasal minimal 18 pekan, semester genap minimal 16 pekan.</li>
-              </ol>
-            </div>
-            <div class="text-center">
-              <p id="print-kota-tanggal">Banjarmasin, 15 Juli 2026</p>
-              <p class="font-semibold" id="print-jabatan-kepala">Kepala Madrasah,</p>
-              <div class="h-14"></div>
-              <p class="font-bold underline uppercase" id="print-nama-kepala">Dr. H. Ahmad Fauzi, M.Pd</p>
-              <p id="print-nip-kepala">NIP. 19780512 200312 1 004</p>
-            </div>
           </div>
         </div>
       </div>
 
-      <aside class="lg:col-span-4 no-print space-y-6">
+      <aside class="lg:col-span-4 space-y-6">
         
         <!-- Legend Color Coding (Kaldik Categories) -->
         <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
@@ -339,25 +310,12 @@
       </aside>
     </div>
 
-    <div class="print-only mt-4 page-break">
-      <h3 class="text-xs font-bold uppercase border-b border-slate-800 pb-1 mb-2">Rincian Kegiatan & Agenda Pendidikan</h3>
-      <table class="w-full border-collapse text-[9.5px]">
-        <thead>
-          <tr class="bg-slate-100 text-left">
-            <th class="border border-slate-400 p-1.5 w-8 text-center">No</th>
-            <th class="border border-slate-400 p-1.5 w-32">Rentang Tanggal</th>
-            <th class="border border-slate-400 p-1.5 w-28">Kategori</th>
-            <th class="border border-slate-400 p-1.5">Nama Kegiatan / Agenda Sekolah</th>
-            <th class="border border-slate-400 p-1.5 w-36">Keterangan</th>
-          </tr>
-        </thead>
-        <tbody id="print-agenda-table-body">
-          <!-- Populated by JS for printable table -->
-        </tbody>
-      </table>
-    </div>
-
   </main>
+
+  <!-- AREA CETAK KHUSUS DOKUMEN A4 PDF (Hanya aktif saat dialog print browser dipanggil) -->
+  <div id="print-render-container" class="hidden print:block w-full">
+    <!-- Diinjeksi secara terstruktur oleh buildPrintDocument() sebelum window.print() -->
+  </div>
 
   
   <!-- MODAL: Tambah/Edit Agenda -->
@@ -456,6 +414,17 @@
           <div>
             <label class="block font-semibold text-slate-700 mb-1">Nama Kategori Agenda *</label>
             <input type="text" id="category-input-name" required placeholder="Contoh: Class Meeting / Simulasi ANBK" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          </div>
+
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">URL Logo / Ikon Kategori (Muncul di Tanggal)</label>
+            <div class="flex items-center space-x-2">
+              <input type="text" id="category-input-logo" placeholder="https://... (URL gambar) atau simbol (misal: 🎓, 📝, ⭐)" oninput="updateCategoryLogoPreview(this.value)" class="flex-1 px-3 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-xs">
+              <div id="category-logo-preview-box" class="w-9 h-9 rounded-lg border border-slate-300 bg-white flex items-center justify-center overflow-hidden flex-shrink-0 text-sm">
+                <i data-lucide="image" class="w-4 h-4 text-slate-400" id="category-logo-preview-placeholder"></i>
+              </div>
+            </div>
+            <p class="text-[10px] text-slate-400 mt-1">Dapat diisi URL logo gambar PNG/WebP atau karakter simbol kegiatan.</p>
           </div>
 
           <!-- Color Selection & Palettes -->
@@ -689,32 +658,51 @@
 
       <div class="p-6 space-y-5 text-xs">
         
-        <!-- Pilihan 1: Rentang Periode Semester -->
+        <!-- Pilihan 1: Rentang Periode Semester & Layout Halaman -->
         <div>
           <label class="block font-bold text-slate-800 mb-2 flex items-center space-x-1.5">
             <i data-lucide="calendar-range" class="w-3.5 h-3.5 text-emerald-600"></i>
-            <span>Pilih Periode Kalender Pendidikan:</span>
+            <span>Pilih Format Halaman & Periode Kaldik:</span>
           </label>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-            <label class="relative flex flex-col p-3 border-2 border-emerald-500 bg-emerald-50/30 rounded-xl cursor-pointer hover:border-emerald-600 transition" id="label-scope-gasal">
-              <input type="radio" name="export-scope" value="gasal" checked onchange="handleExportScopeChange()" class="sr-only">
-              <span class="font-bold text-slate-800 text-[11px]">Semester Gasal</span>
-              <span class="text-[10px] text-slate-500 mt-0.5">Juli – Des (6 Bln)</span>
-              <span class="text-[9px] font-semibold text-emerald-700 mt-1">Semester 1 / Ganjil</span>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <!-- 1. Semester Gasal -->
+            <label class="relative flex flex-col p-3 border-2 border-slate-200 rounded-xl cursor-pointer hover:border-slate-300 transition" id="label-scope-gasal">
+              <input type="radio" name="export-scope" value="gasal" onchange="handleExportScopeChange()" class="sr-only">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-slate-800 text-[11px]">Semester Gasal (1 Lembar)</span>
+                <span class="text-[9px] bg-slate-100 text-slate-600 font-semibold px-1.5 py-0.5 rounded">6 Bulan</span>
+              </div>
+              <span class="text-[10px] text-slate-500 mt-1">Juli – Desember (Pas 1 Halaman A4)</span>
             </label>
 
+            <!-- 2. Semester Genap -->
             <label class="relative flex flex-col p-3 border-2 border-slate-200 rounded-xl cursor-pointer hover:border-slate-300 transition" id="label-scope-genap">
               <input type="radio" name="export-scope" value="genap" onchange="handleExportScopeChange()" class="sr-only">
-              <span class="font-bold text-slate-800 text-[11px]">Semester Genap</span>
-              <span class="text-[10px] text-slate-500 mt-0.5">Jan – Jun (6 Bln)</span>
-              <span class="text-[9px] font-semibold text-emerald-700 mt-1">Semester 2 / Genap</span>
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-slate-800 text-[11px]">Semester Genap (1 Lembar)</span>
+                <span class="text-[9px] bg-slate-100 text-slate-600 font-semibold px-1.5 py-0.5 rounded">6 Bulan</span>
+              </div>
+              <span class="text-[10px] text-slate-500 mt-1">Januari – Juni (Pas 1 Halaman A4)</span>
             </label>
 
-            <label class="relative flex flex-col p-3 border-2 border-slate-200 rounded-xl cursor-pointer hover:border-slate-300 transition" id="label-scope-full">
-              <input type="radio" name="export-scope" value="full" onchange="handleExportScopeChange()" class="sr-only">
-              <span class="font-bold text-slate-800 text-[11px]">1 Tahun Penuh</span>
-              <span class="text-[10px] text-slate-500 mt-0.5">Jul – Jun (12 Bln)</span>
-              <span class="text-[9px] font-semibold text-purple-700 mt-1">Tahun Ajaran Lengkap</span>
+            <!-- 3. 1 Tahun Penuh (2 Halaman Bersih - Rekomendasi Bebas Terpotong) -->
+            <label class="relative flex flex-col p-3 border-2 border-emerald-500 bg-emerald-50/30 rounded-xl cursor-pointer hover:border-emerald-600 transition" id="label-scope-full-2page">
+              <input type="radio" name="export-scope" value="full-2page" checked onchange="handleExportScopeChange()" class="sr-only">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-slate-800 text-[11px]">1 Tahun Penuh (2 Halaman)</span>
+                <span class="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded">Rekomendasi</span>
+              </div>
+              <span class="text-[10px] text-slate-600 mt-1">Hal 1: Gasal, Hal 2: Genap. <strong>Bebas terpotong, sangat rapi & formal.</strong></span>
+            </label>
+
+            <!-- 4. 1 Tahun Penuh (Fit 1 Halaman Poster) -->
+            <label class="relative flex flex-col p-3 border-2 border-slate-200 rounded-xl cursor-pointer hover:border-slate-300 transition" id="label-scope-full-1page">
+              <input type="radio" name="export-scope" value="full-1page" onchange="handleExportScopeChange()" class="sr-only">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-slate-800 text-[11px]">1 Tahun Penuh (Fit 1 Lembar)</span>
+                <span class="text-[9px] bg-purple-100 text-purple-700 font-semibold px-1.5 py-0.5 rounded">Poster A4</span>
+              </div>
+              <span class="text-[10px] text-slate-500 mt-1">Skala kompak otomatis: 12 bulan all-in-one pas 1 lembar tanpa terbelah.</span>
             </label>
           </div>
         </div>
@@ -733,7 +721,7 @@
               </div>
               <div>
                 <p class="font-bold text-slate-800 text-xs">Lanskap (Landscape)</p>
-                <p class="text-[10px] text-slate-500">Melebar horizontal (Standar Kaldik)</p>
+                <p class="text-[10px] text-slate-500">Standar resmi Kalender Pendidikan</p>
               </div>
             </label>
 
@@ -754,10 +742,10 @@
         <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 space-y-2">
           <label class="flex items-center space-x-2.5 cursor-pointer">
             <input type="checkbox" id="export-include-table" checked class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300">
-            <span class="text-[11px] font-medium text-slate-700">Sertakan Halaman Lampiran Tabel Rincian Agenda & Pengesahan</span>
+            <span class="text-[11px] font-medium text-slate-700">Sertakan Halaman Lampiran Tabel Rincian Agenda Kegiatan</span>
           </label>
           <p class="text-[10px] text-slate-500 pl-6">
-            Tips: Pada jendela print browser, pilih printer <strong>"Save as PDF"</strong> / <strong>"Simpan sebagai PDF"</strong> dan pastikan opsi <strong>"Background graphics"</strong> dicentang.
+            Tips: Pada jendela print browser, pilih printer <strong>"Save as PDF"</strong> / <strong>"Simpan sebagai PDF"</strong> dan pastikan opsi <strong>"Background graphics"</strong> dicentang agar warna kalender tercetak jelas.
           </p>
         </div>
 
@@ -890,7 +878,7 @@
     const is_preview = false; // UBAH KE false UNTUK MENGHUBUNGKAN KE SUPABASE ASLI
 
     const SUPABASE_URL = "https://pevqnrmqicdwclkfcnon.supabase.co";
-    const SUPABASE_ANON_KEY = "sb_publishable_37Ueo6gkxrU2fPRNqkHiMQ_6RWdSmhI";
+    const SUPABASE_ANON_KEY = "sb_publishable_37Ueo6gkxrU2fPRNqkHiMQ_6RWdSmhI";;
 
     let supabaseClient = null;
     if (!is_preview && typeof supabase !== 'undefined') {
@@ -916,13 +904,13 @@
     ];
 
     const DEFAULT_CATEGORIES = {
-      matsama: { id: 'matsama', label: 'MPLS / Matsama', color: '#0284c7', isHoliday: false },
-      ujian: { id: 'ujian', label: 'Asesmen / Ujian (PTS/PAS/US)', color: '#d97706', isHoliday: false },
-      libur_semester: { id: 'libur_semester', label: 'Libur Akhir Semester', color: '#e11d48', isHoliday: true },
-      libur_nasional: { id: 'libur_nasional', label: 'Libur Resmi / Keagamaan', color: '#dc2626', isHoliday: true },
-      rapor: { id: 'rapor', label: 'Pembagian Buku Rapor', color: '#7c3aed', isHoliday: false },
-      p5: { id: 'p5', label: 'Proyek P5 / P2RA / Khusus', color: '#4f46e5', isHoliday: false },
-      efektif_khusus: { id: 'efektif_khusus', label: 'Kegiatan Efektif Khusus', color: '#0d9488', isHoliday: false }
+      matsama: { id: 'matsama', label: 'MPLS / Matsama', color: '#0284c7', logo: '🎓', isHoliday: false },
+      ujian: { id: 'ujian', label: 'Asesmen / Ujian (PTS/PAS/US)', color: '#d97706', logo: '📝', isHoliday: false },
+      libur_semester: { id: 'libur_semester', label: 'Libur Akhir Semester', color: '#e11d48', logo: '🏖️', isHoliday: true },
+      libur_nasional: { id: 'libur_nasional', label: 'Libur Resmi / Keagamaan', color: '#dc2626', logo: '🕌', isHoliday: true },
+      rapor: { id: 'rapor', label: 'Pembagian Buku Rapor', color: '#7c3aed', logo: '📘', isHoliday: false },
+      p5: { id: 'p5', label: 'Proyek P5 / P2RA / Khusus', color: '#4f46e5', logo: '🎨', isHoliday: false },
+      efektif_khusus: { id: 'efektif_khusus', label: 'Kegiatan Efektif Khusus', color: '#0d9488', logo: '⭐', isHoliday: false }
     };
 
     function getContrastTextColor(hexColor) {
@@ -933,6 +921,29 @@
       const b = parseInt(cleanHex.substr(4, 2), 16);
       const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
       return (yiq >= 150) ? '#0f172a' : '#ffffff';
+    }
+
+    /* Helper: Render logo/ikon kategori (mendukung URL gambar atau simbol/emoji) */
+    function renderCategoryLogoHTML(logo, isPrint = false) {
+      if (!logo || !logo.trim()) return '';
+      const clean = logo.trim();
+      const isImage = clean.startsWith('http://') || clean.startsWith('https://') || clean.startsWith('data:image/') || clean.startsWith('blob:');
+      const sizeClass = isPrint ? 'w-2.5 h-2.5' : 'w-3 h-3';
+      if (isImage) {
+        return `<img src="${clean}" class="${sizeClass} object-contain inline-block flex-shrink-0" alt="" onerror="this.style.display='none'">`;
+      }
+      return `<span class="inline-block ${isPrint ? 'text-[7.5px]' : 'text-[9px]'} leading-none">${clean}</span>`;
+    }
+
+    function updateCategoryLogoPreview(val) {
+      const box = document.getElementById('category-logo-preview-box');
+      if (!box) return;
+      if (!val || !val.trim()) {
+        box.innerHTML = `<i data-lucide="image" class="w-4 h-4 text-slate-400" id="category-logo-preview-placeholder"></i>`;
+        lucide.createIcons();
+        return;
+      }
+      box.innerHTML = renderCategoryLogoHTML(val, false);
     }
 
     const INITIAL_EVENTS = [
@@ -1105,17 +1116,23 @@
 
     function renderSchoolIdentity() {
       const sc = AppState.school;
-      document.getElementById('school-name-subtitle').innerText = `${sc.name} • T.A. ${sc.year}`;
-      document.getElementById('stat-academic-year').innerText = sc.year;
+      const subtitle = document.getElementById('school-name-subtitle');
+      if (subtitle) subtitle.innerText = `${sc.name} • T.A. ${sc.year}`;
+      const statYear = document.getElementById('stat-academic-year');
+      if (statYear) statYear.innerText = sc.year;
       
-      document.getElementById('kop-nama-yayasan').innerText = sc.instansi || "KEMENTERIAN AGAMA";
-      document.getElementById('kop-nama-sekolah').innerText = sc.name;
-      document.getElementById('kop-alamat').innerText = `${sc.address} - NPSN: ${sc.npsn}`;
-      document.getElementById('kop-doc-title').innerText = `KALENDER PENDIDIKAN TAHUN AJARAN ${sc.year}`;
+      const setIfExists = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = val;
+      };
 
-      document.getElementById('print-kota-tanggal').innerText = `${sc.city}, ${sc.docDate}`;
-      document.getElementById('print-nama-kepala').innerText = sc.principal;
-      document.getElementById('print-nip-kepala').innerText = `NIP. ${sc.principalNip}`;
+      setIfExists('kop-nama-yayasan', sc.instansi || "KEMENTERIAN AGAMA");
+      setIfExists('kop-nama-sekolah', sc.name);
+      setIfExists('kop-alamat', `${sc.address} - NPSN: ${sc.npsn}`);
+      setIfExists('kop-doc-title', `KALENDER PENDIDIKAN TAHUN AJARAN ${sc.year}`);
+      setIfExists('print-kota-tanggal', `${sc.city}, ${sc.docDate}`);
+      setIfExists('print-nama-kepala', sc.principal);
+      setIfExists('print-nip-kepala', `NIP. ${sc.principalNip}`);
 
       renderKopLogos();
     }
@@ -1127,22 +1144,26 @@
       const logoSekolahImg = document.getElementById('kop-logo-kanan-img');
       const logoSekolahDef = document.getElementById('kop-logo-kanan-default');
 
-      if (sc.logoKementerian && sc.logoKementerian.trim()) {
-        logoKemenImg.src = sc.logoKementerian;
-        logoKemenImg.classList.remove('hidden');
-        logoKemenDef.classList.add('hidden');
-      } else {
-        logoKemenImg.classList.add('hidden');
-        logoKemenDef.classList.remove('hidden');
+      if (logoKemenImg && logoKemenDef) {
+        if (sc.logoKementerian && sc.logoKementerian.trim()) {
+          logoKemenImg.src = sc.logoKementerian;
+          logoKemenImg.classList.remove('hidden');
+          logoKemenDef.classList.add('hidden');
+        } else {
+          logoKemenImg.classList.add('hidden');
+          logoKemenDef.classList.remove('hidden');
+        }
       }
 
-      if (sc.logoSekolah && sc.logoSekolah.trim()) {
-        logoSekolahImg.src = sc.logoSekolah;
-        logoSekolahImg.classList.remove('hidden');
-        logoSekolahDef.classList.add('hidden');
-      } else {
-        logoSekolahImg.classList.add('hidden');
-        logoSekolahDef.classList.remove('hidden');
+      if (logoSekolahImg && logoSekolahDef) {
+        if (sc.logoSekolah && sc.logoSekolah.trim()) {
+          logoSekolahImg.src = sc.logoSekolah;
+          logoSekolahImg.classList.remove('hidden');
+          logoSekolahDef.classList.add('hidden');
+        } else {
+          logoSekolahImg.classList.add('hidden');
+          logoSekolahDef.classList.remove('hidden');
+        }
       }
     }
 
@@ -1205,7 +1226,7 @@
         const totalDays = new Date(actualYear, m.monthIndex + 1, 0).getDate();
 
         const card = document.createElement('div');
-        card.className = "border border-slate-200/90 rounded-xl overflow-hidden bg-white shadow-[0_1px_3px_rgba(0,0,0,0.02)]";
+        card.className = "month-card print-card print-avoid-break border border-slate-200/90 rounded-xl overflow-hidden bg-white shadow-[0_1px_3px_rgba(0,0,0,0.02)]";
 
         let headerColor = m.semester === 'gasal' ? 'bg-slate-900 text-white' : 'bg-emerald-800 text-white';
         
@@ -1235,6 +1256,7 @@
           let cellClass = "h-7 w-full flex items-center justify-center rounded font-semibold transition cursor-pointer relative ";
           let customStyle = "";
           let tooltip = `${day} ${m.name} ${actualYear}`;
+          let logoBadgeHTML = '';
 
           if (event) {
             const cat = AppState.categories[event.category] || { label: 'Agenda', color: '#059669', isHoliday: false };
@@ -1242,6 +1264,9 @@
             customStyle = `background-color: ${cat.color} !important; color: ${contrast} !important;`;
             cellClass += "font-bold shadow-xs hover:scale-105 ";
             tooltip += `: ${event.title} (${cat.label})`;
+            if (cat.logo) {
+              logoBadgeHTML = renderCategoryLogoHTML(cat.logo, false);
+            }
           } else if (isSunday) {
             cellClass += "text-red-600 bg-red-50/70 hover:bg-red-100 ";
           } else if (isFriday) {
@@ -1252,8 +1277,11 @@
 
           html += `
             <div onclick="handleDayClick('${dateStr}')" title="${tooltip}" style="${customStyle}" class="${cellClass}">
-              <span>${day}</span>
-              ${event ? `<span class="absolute bottom-0.5 w-1 h-1 bg-white/90 rounded-full"></span>` : ''}
+              <div class="flex items-center justify-center space-x-0.5 leading-none">
+                <span>${day}</span>
+                ${logoBadgeHTML}
+              </div>
+              ${event && !logoBadgeHTML ? `<span class="absolute bottom-0.5 w-1 h-1 bg-white/90 rounded-full"></span>` : ''}
             </div>
           `;
         }
@@ -1330,34 +1358,47 @@
     function renderAgendaList(eventsList) {
       const container = document.getElementById('agenda-items-container');
       const badge = document.getElementById('agenda-count-badge');
-      badge.innerText = `${eventsList.length} Agenda`;
+      if (!container) return;
 
-      if (eventsList.length === 0) {
+      const sorted = [...eventsList].sort((a, b) => a.start_date.localeCompare(b.start_date));
+      if (badge) badge.innerText = `${sorted.length} Agenda`;
+
+      if (sorted.length === 0) {
         container.innerHTML = `
-          <div class="py-8 text-center text-slate-400">
-            <i data-lucide="calendar-x" class="w-8 h-8 mx-auto mb-2 stroke-1"></i>
-            <p class="text-xs">Tidak ada agenda pada periode ini.</p>
+          <div class="text-center py-8 text-slate-400 text-xs">
+            <i data-lucide="calendar-x" class="w-8 h-8 mx-auto mb-2 text-slate-300"></i>
+            <p class="font-medium">Tidak ada agenda pada periode ini.</p>
+            <p class="text-[10px] text-slate-400 mt-0.5">Klik salah satu tanggal pada kalender untuk menambah agenda.</p>
           </div>
         `;
         lucide.createIcons();
         return;
       }
 
-      const sorted = [...eventsList].sort((a, b) => a.start_date.localeCompare(b.start_date));
-
       container.innerHTML = sorted.map(ev => {
-        const cat = AppState.categories[ev.category] || { label: ev.category, color: '#059669' };
+        const cat = AppState.categories[ev.category] || { label: ev.category || 'Agenda', color: '#059669', isHoliday: false };
+        const contrast = getContrastTextColor(cat.color);
         return `
-          <div onclick="editEvent('${ev.id}')" class="p-2.5 rounded-xl border border-slate-100 hover:border-slate-300 hover:bg-slate-50 transition cursor-pointer flex items-start space-x-3 group">
-            <div class="w-3 h-3 rounded-full mt-1 flex-shrink-0 shadow-xs" style="background-color: ${cat.color};"></div>
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center justify-between">
-                <span class="text-[10px] font-bold uppercase tracking-wider" style="color: ${cat.color};">${cat.label}</span>
-                <span class="text-[10px] text-slate-400">${formatDateRange(ev.start_date, ev.end_date)}</span>
+          <div onclick="editEvent('${ev.id}')" class="group p-3 rounded-xl border border-slate-200/90 hover:border-emerald-400 hover:shadow-sm transition bg-white cursor-pointer relative flex flex-col space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="inline-flex items-center space-x-1.5 px-2 py-0.5 rounded text-[10px] font-bold shadow-xs" style="background-color: ${cat.color}; color: ${contrast};">
+                <span>${cat.label}</span>
+              </span>
+              <div class="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition">
+                <button type="button" onclick="event.stopPropagation(); editEvent('${ev.id}')" title="Edit Agenda" class="p-1 text-slate-400 hover:text-emerald-600 rounded">
+                  <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
+                </button>
+                <button type="button" onclick="deleteAgendaItem('${ev.id}', event)" title="Hapus Agenda" class="p-1 text-slate-400 hover:text-rose-600 rounded">
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                </button>
               </div>
-              <h5 class="text-xs font-semibold text-slate-800 truncate group-hover:text-emerald-700 transition">${ev.title}</h5>
-              ${ev.description ? `<p class="text-[11px] text-slate-500 truncate mt-0.5">${ev.description}</p>` : ''}
             </div>
+            <h5 class="font-bold text-slate-800 text-xs leading-snug group-hover:text-emerald-700 transition">${ev.title}</h5>
+            <div class="flex items-center space-x-2 text-[10px] text-slate-500 font-medium">
+              <i data-lucide="calendar" class="w-3 h-3 text-slate-400"></i>
+              <span>${formatDateRange(ev.start_date, ev.end_date)}</span>
+            </div>
+            ${ev.description ? `<p class="text-[10px] text-slate-500 line-clamp-2 pt-0.5 border-t border-slate-100">${ev.description}</p>` : ''}
           </div>
         `;
       }).join('');
@@ -1365,8 +1406,20 @@
       lucide.createIcons();
     }
 
+    async function deleteAgendaItem(id, event) {
+      if (event) event.stopPropagation();
+      try {
+        await DataService.deleteEvent(id);
+        renderCalendar();
+        showToast("Agenda berhasil dihapus", "info");
+      } catch (err) {
+        showToast("Gagal menghapus agenda", "error");
+      }
+    }
+
     function renderPrintTable(eventsList) {
       const tbody = document.getElementById('print-agenda-table-body');
+      if (!tbody) return;
       const sorted = [...eventsList].sort((a, b) => a.start_date.localeCompare(b.start_date));
 
       if (sorted.length === 0) {
@@ -1420,7 +1473,9 @@
       container.innerHTML = cats.map(item => `
         <div class="flex items-center justify-between group py-0.5">
           <div class="flex items-center space-x-2.5 min-w-0">
-            <span class="w-3.5 h-3.5 rounded flex-shrink-0 shadow-xs" style="background-color: ${item.color};"></span>
+            <span class="w-4 h-4 rounded flex-shrink-0 shadow-xs flex items-center justify-center overflow-hidden" style="background-color: ${item.color}; color: ${getContrastTextColor(item.color)};">
+              ${renderCategoryLogoHTML(item.logo, false)}
+            </span>
             <span class="text-slate-700 font-medium text-[11px] truncate">${item.label}</span>
             ${item.isHoliday ? `<span class="px-1.5 py-0.2 text-[9px] bg-rose-50 text-rose-600 border border-rose-200 rounded font-bold">Libur</span>` : ''}
           </div>
@@ -1510,12 +1565,14 @@
 
       container.innerHTML = cats.map(cat => {
         const eventsUsingCount = AppState.events.filter(e => e.category === cat.id).length;
-        const isDefault = ['matsama', 'ujian', 'libur_semester', 'libur_nasional', 'rapor', 'p5', 'efektif_khusus'].includes(cat.id);
+        const logoDisplay = renderCategoryLogoHTML(cat.logo, false);
 
         return `
           <div class="p-2.5 bg-white border border-slate-200 rounded-xl flex items-center justify-between hover:border-slate-300 transition">
             <div class="flex items-center space-x-3 min-w-0">
-              <span class="w-5 h-5 rounded-md flex-shrink-0 shadow-xs" style="background-color: ${cat.color};"></span>
+              <span class="w-6 h-6 rounded-md flex-shrink-0 shadow-xs flex items-center justify-center overflow-hidden" style="background-color: ${cat.color}; color: ${getContrastTextColor(cat.color)};">
+                ${logoDisplay || ''}
+              </span>
               <div>
                 <div class="flex items-center space-x-1.5">
                   <span class="font-bold text-slate-800 text-xs">${cat.label}</span>
@@ -1551,6 +1608,8 @@
       openCategoryModal();
       document.getElementById('category-edit-id').value = cat.id;
       document.getElementById('category-input-name').value = cat.label;
+      document.getElementById('category-input-logo').value = cat.logo || '';
+      updateCategoryLogoPreview(cat.logo || '');
       document.getElementById('category-is-holiday').checked = !!cat.isHoliday;
       syncColorInput(cat.color);
 
@@ -1566,6 +1625,8 @@
     function resetCategoryForm() {
       document.getElementById('form-category').reset();
       document.getElementById('category-edit-id').value = '';
+      document.getElementById('category-input-logo').value = '';
+      updateCategoryLogoPreview('');
       document.getElementById('category-form-title').innerHTML = `
         <i data-lucide="plus-circle" class="w-3.5 h-3.5 text-emerald-600"></i>
         <span>Tambah Kategori Baru</span>
@@ -1580,6 +1641,7 @@
       e.preventDefault();
       const editId = document.getElementById('category-edit-id').value;
       const label = document.getElementById('category-input-name').value.trim();
+      const logo = document.getElementById('category-input-logo').value.trim();
       const color = document.getElementById('category-color-hex').value.trim().toUpperCase() || '#059669';
       const isHoliday = document.getElementById('category-is-holiday').checked;
 
@@ -1595,6 +1657,7 @@
         id,
         label,
         color,
+        logo,
         isHoliday
       };
 
@@ -1606,6 +1669,7 @@
           id,
           label,
           color,
+          icon: logo,
           is_holiday: isHoliday
         }).then(({ error }) => {
           if (error) console.error("Supabase category error:", error);
@@ -1625,10 +1689,7 @@
 
       const eventsCount = AppState.events.filter(e => e.category === catId).length;
       if (eventsCount > 0) {
-        if (!confirm(`Kategori "${cat.label}" sedang digunakan oleh ${eventsCount} agenda. Menghapus kategori ini akan memindahkan agenda tersebut ke kategori default. Lanjutkan?`)) {
-          return;
-        }
-        // Migrasi agenda ke default
+        // Migrasi agenda ke kategori default
         const updatedEvents = AppState.events.map(ev => {
           if (ev.category === catId) {
             return { ...ev, category: 'efektif_khusus' };
@@ -1653,7 +1714,6 @@
     }
 
     function confirmResetCategories() {
-      if (!confirm("Kembalikan semua kategori ke susunan palet standar Kaldik?")) return;
       AppState.saveCategories(DEFAULT_CATEGORIES);
       renderLegend();
       renderCalendar();
@@ -1878,9 +1938,6 @@
 
     function openExportModal() {
       const modal = document.getElementById('modal-export');
-      const currentScope = AppState.currentSemester || 'gasal';
-      const scopeRadio = document.querySelector(`input[name="export-scope"][value="${currentScope}"]`);
-      if (scopeRadio) scopeRadio.checked = true;
       handleExportScopeChange();
       handleExportOrientChange();
 
@@ -1896,8 +1953,8 @@
     }
 
     function handleExportScopeChange() {
-      const selected = document.querySelector('input[name="export-scope"]:checked')?.value || 'gasal';
-      ['gasal', 'genap', 'full'].forEach(sc => {
+      const selected = document.querySelector('input[name="export-scope"]:checked')?.value || 'full-2page';
+      ['gasal', 'genap', 'full-2page', 'full-1page'].forEach(sc => {
         const el = document.getElementById(`label-scope-${sc}`);
         if (el) {
           if (sc === selected) {
@@ -1923,18 +1980,296 @@
       });
     }
 
+    /* ==========================================================================
+       GENERATOR DOKUMEN CETAK A4 ANTI-POTONG (PRINT TEMPLATE BUILDER)
+       ========================================================================== */
+
+    function generatePrintKopHTML(docTitle, isCompact = false) {
+      const sc = AppState.school;
+      const logoSize = isCompact ? 'w-12 h-12' : 'w-14 h-14';
+      
+      const logoKiri = sc.logoKementerian && sc.logoKementerian.trim()
+        ? `<img src="${sc.logoKementerian}" class="${logoSize} object-contain" alt="Logo Kementerian">`
+        : `<div class="${logoSize} flex items-center justify-center border border-dashed border-slate-300 rounded text-slate-400 font-bold text-[8px]">LOGO 1</div>`;
+
+      const logoKanan = sc.logoSekolah && sc.logoSekolah.trim()
+        ? `<img src="${sc.logoSekolah}" class="${logoSize} object-contain" alt="Logo Sekolah">`
+        : `<div class="${logoSize} flex items-center justify-center border border-dashed border-slate-300 rounded text-slate-400 font-bold text-[8px]">LOGO 2</div>`;
+
+      return `
+        <div class="print-avoid-break border-b-2 border-slate-900 pb-2 mb-2 text-center">
+          <div class="flex items-center justify-between px-1">
+            <div class="${logoSize} flex items-center justify-center flex-shrink-0">
+              ${logoKiri}
+            </div>
+            <div class="flex-1 text-center px-3">
+              <h2 class="text-[10px] font-bold uppercase tracking-wider text-slate-700">${sc.instansi || 'KEMENTERIAN AGAMA REPUBLIK INDONESIA'}</h2>
+              <h1 class="${isCompact ? 'text-sm' : 'text-base'} font-black uppercase text-slate-900 leading-tight">${sc.name}</h1>
+              <p class="text-[9px] text-slate-600 leading-tight">${sc.address} - NPSN: ${sc.npsn}</p>
+              <div class="mt-1 inline-block border-t border-slate-800 px-4 pt-0.5">
+                <span class="${isCompact ? 'text-[9.5px]' : 'text-[10.5px]'} font-bold tracking-wide uppercase text-slate-900">${docTitle}</span>
+              </div>
+            </div>
+            <div class="${logoSize} flex items-center justify-center flex-shrink-0">
+              ${logoKanan}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function generatePrintMonthCardHTML(m, actualYear, isCompact = false) {
+      const firstDay = new Date(actualYear, m.monthIndex, 1).getDay();
+      const totalDays = new Date(actualYear, m.monthIndex + 1, 0).getDate();
+      const dayHeaders = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+      const headerColor = m.semester === 'gasal' ? 'bg-slate-900 text-white' : 'bg-emerald-800 text-white';
+
+      let html = `
+        <div class="print-avoid-break border border-slate-300 rounded-lg overflow-hidden bg-white">
+          <div class="${headerColor} ${isCompact ? 'px-2 py-0.5 text-[9px]' : 'px-2.5 py-1 text-[10px]'} flex items-center justify-between font-bold">
+            <span>${m.name.toUpperCase()} ${actualYear}</span>
+            <span class="text-[8px] font-normal opacity-80 uppercase">${m.semester}</span>
+          </div>
+          <div class="${isCompact ? 'p-1' : 'p-1.5'}">
+            <div class="grid grid-cols-7 gap-0.5 text-center ${isCompact ? 'text-[8px] pb-0.5 mb-0.5' : 'text-[9px] pb-1 mb-1'} font-bold text-slate-500 border-b border-slate-100">
+              ${dayHeaders.map((dh, idx) => `<span class="${idx === 0 ? 'text-red-500' : ''}">${dh}</span>`).join('')}
+            </div>
+            <div class="grid grid-cols-7 gap-0.5 text-center">
+      `;
+
+      for (let i = 0; i < firstDay; i++) {
+        html += `<div class="${isCompact ? 'compact-cell' : 'h-6'} w-full"></div>`;
+      }
+
+      for (let day = 1; day <= totalDays; day++) {
+        const dateStr = dateToString(actualYear, m.monthIndex, day);
+        const currentDayOfWeek = new Date(actualYear, m.monthIndex, day).getDay();
+        const isSunday = currentDayOfWeek === 0;
+        const isFriday = currentDayOfWeek === 5;
+        const event = getEventForDate(dateStr);
+
+        let cellClass = `${isCompact ? 'compact-cell' : 'h-6'} w-full flex items-center justify-center rounded font-semibold text-[9.5px] `;
+        let customStyle = "";
+        let printLogoHTML = '';
+
+        if (event) {
+          const cat = AppState.categories[event.category] || { label: 'Agenda', color: '#059669' };
+          const contrast = getContrastTextColor(cat.color);
+          customStyle = `background-color: ${cat.color} !important; color: ${contrast} !important; font-weight: bold;`;
+          if (cat.logo) {
+            printLogoHTML = renderCategoryLogoHTML(cat.logo, true);
+          }
+        } else if (isSunday) {
+          cellClass += "text-red-600 bg-red-50/60 font-bold ";
+        } else if (isFriday) {
+          cellClass += "text-emerald-700 bg-emerald-50/30 font-medium ";
+        } else {
+          cellClass += "text-slate-800 ";
+        }
+
+        html += `
+          <div style="${customStyle}" class="${cellClass}">
+            <div class="flex items-center justify-center space-x-0.5 leading-none">
+              <span>${day}</span>
+              ${printLogoHTML}
+            </div>
+          </div>
+        `;
+      }
+
+      html += `
+            </div>
+          </div>
+        </div>
+      `;
+      return html;
+    }
+
+    function generatePrintSignatureHTML(semesterText, isCompact = false) {
+      const sc = AppState.school;
+      return `
+        <div class="print-avoid-break mt-2.5 pt-1.5 border-t border-slate-300 text-[9px]">
+          <div class="grid grid-cols-3 gap-3">
+            <div class="col-span-2">
+              <h5 class="font-bold uppercase text-[8.5px] mb-0.5">Catatan Khusus Madrasah / Sekolah (${semesterText}):</h5>
+              <ol class="list-decimal pl-3 space-y-0.5 text-[8.5px] text-slate-700">
+                <li>Hari Efektif Belajar (HEB) tidak termasuk hari libur resmi, jeda tengah semester, dan cuti keagamaan.</li>
+                <li>Jadwal Asesmen/Ujian dapat disesuaikan dengan petunjuk teknis Kemenag/Dinas Pendidikan terkait.</li>
+                <li>Rencana Pekan Efektif (RPE) semester berjalan mengacu pada pedoman standar kurikulum aktif.</li>
+              </ol>
+            </div>
+            <div class="text-center">
+              <p>${sc.city}, ${sc.docDate}</p>
+              <p class="font-semibold">Kepala Madrasah / Sekolah,</p>
+              <div class="${isCompact ? 'h-10' : 'h-12'}"></div>
+              <p class="font-bold underline uppercase">${sc.principal}</p>
+              <p>NIP. ${sc.principalNip}</p>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function generatePrintAgendaTableHTML(eventsList, titleText) {
+      const sorted = [...eventsList].sort((a, b) => a.start_date.localeCompare(b.start_date));
+      let rowsHTML = '';
+
+      if (sorted.length === 0) {
+        rowsHTML = `<tr><td colspan="5" class="border border-slate-400 p-2 text-center text-slate-400">Tidak ada agenda khusus pada periode ini.</td></tr>`;
+      } else {
+        rowsHTML = sorted.map((ev, idx) => {
+          const cat = AppState.categories[ev.category] || { label: ev.category, color: '#059669' };
+          return `
+            <tr class="print-avoid-break">
+              <td class="border border-slate-400 p-1 text-center font-bold">${idx + 1}</td>
+              <td class="border border-slate-400 p-1 whitespace-nowrap">${formatDateRange(ev.start_date, ev.end_date)}</td>
+              <td class="border border-slate-400 p-1 font-medium">
+                <span class="inline-block w-2 h-2 rounded-full mr-1" style="background-color: ${cat.color};"></span>
+                <span>${cat.label}</span>
+              </td>
+              <td class="border border-slate-400 p-1 font-bold">${ev.title}</td>
+              <td class="border border-slate-400 p-1 text-slate-600">${ev.description || '-'}</td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      return `
+        <div class="print-page-break pt-2">
+          <h3 class="text-xs font-bold uppercase border-b-2 border-slate-900 pb-1 mb-2">Lampiran Agenda & Kegiatan Pendidikan (${titleText})</h3>
+          <table class="w-full border-collapse text-[9px]">
+            <thead>
+              <tr class="bg-slate-100 text-left">
+                <th class="border border-slate-400 p-1 w-7 text-center">No</th>
+                <th class="border border-slate-400 p-1 w-28">Rentang Tanggal</th>
+                <th class="border border-slate-400 p-1 w-28">Kategori</th>
+                <th class="border border-slate-400 p-1">Nama Kegiatan / Agenda</th>
+                <th class="border border-slate-400 p-1 w-32">Keterangan</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHTML}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function buildPrintDocument(scope, orientation, includeTable) {
+      const container = document.getElementById('print-render-container');
+      const baseYear = getBaseYear();
+      const yearStr = AppState.school.year || '2026/2027';
+
+      const monthsGasal = INDO_MONTHS.filter(m => m.semester === 'gasal');
+      const monthsGenap = INDO_MONTHS.filter(m => m.semester === 'genap');
+
+      const isLandscape = orientation === 'landscape';
+      let html = '';
+
+      if (scope === 'gasal') {
+        // --- 1 HALAMAN: SEMESTER GASAL ---
+        const gridClass = isLandscape ? 'print-grid-6-landscape' : 'print-grid-6-portrait';
+        html += `
+          <div>
+            ${generatePrintKopHTML(`KALENDER PENDIDIKAN TAHUN AJARAN ${yearStr} - SEMESTER GASAL`, false)}
+            <div class="${gridClass}">
+              ${monthsGasal.map(m => generatePrintMonthCardHTML(m, baseYear + m.yearOffset, false)).join('')}
+            </div>
+            ${generatePrintSignatureHTML('Semester Gasal', false)}
+          </div>
+        `;
+
+        if (includeTable) {
+          const eventsGasal = AppState.events.filter(ev => {
+            const start = new Date(ev.start_date);
+            return start.getMonth() >= 6 && start.getMonth() <= 11;
+          });
+          html += generatePrintAgendaTableHTML(eventsGasal, 'Semester Gasal');
+        }
+
+      } else if (scope === 'genap') {
+        // --- 1 HALAMAN: SEMESTER GENAP ---
+        const gridClass = isLandscape ? 'print-grid-6-landscape' : 'print-grid-6-portrait';
+        html += `
+          <div>
+            ${generatePrintKopHTML(`KALENDER PENDIDIKAN TAHUN AJARAN ${yearStr} - SEMESTER GENAP`, false)}
+            <div class="${gridClass}">
+              ${monthsGenap.map(m => generatePrintMonthCardHTML(m, baseYear + m.yearOffset, false)).join('')}
+            </div>
+            ${generatePrintSignatureHTML('Semester Genap', false)}
+          </div>
+        `;
+
+        if (includeTable) {
+          const eventsGenap = AppState.events.filter(ev => {
+            const start = new Date(ev.start_date);
+            return start.getMonth() >= 0 && start.getMonth() <= 5;
+          });
+          html += generatePrintAgendaTableHTML(eventsGenap, 'Semester Genap');
+        }
+
+      } else if (scope === 'full-2page') {
+        // --- 2 HALAMAN BERSIH (REKOMENDASI): HALAMAN 1 GASAL, HALAMAN 2 GENAP (ANTI-TERPOTONG) ---
+        const gridClass = isLandscape ? 'print-grid-6-landscape' : 'print-grid-6-portrait';
+        
+        // Halaman 1: Semester Gasal
+        html += `
+          <div>
+            ${generatePrintKopHTML(`KALENDER PENDIDIKAN TAHUN AJARAN ${yearStr} - SEMESTER GASAL`, false)}
+            <div class="${gridClass}">
+              ${monthsGasal.map(m => generatePrintMonthCardHTML(m, baseYear + m.yearOffset, false)).join('')}
+            </div>
+            ${generatePrintSignatureHTML('Semester Gasal', false)}
+          </div>
+        `;
+
+        // Halaman 2: Semester Genap (Pindah Halaman Bersih)
+        html += `
+          <div class="print-page-break">
+            ${generatePrintKopHTML(`KALENDER PENDIDIKAN TAHUN AJARAN ${yearStr} - SEMESTER GENAP`, false)}
+            <div class="${gridClass}">
+              ${monthsGenap.map(m => generatePrintMonthCardHTML(m, baseYear + m.yearOffset, false)).join('')}
+            </div>
+            ${generatePrintSignatureHTML('Semester Genap', false)}
+          </div>
+        `;
+
+        // Halaman 3 (Opsional): Lampiran Tabel
+        if (includeTable) {
+          html += generatePrintAgendaTableHTML(AppState.events, '1 Tahun Penuh');
+        }
+
+      } else if (scope === 'full-1page') {
+        // --- FIT 1 LEMBAR POSTER (12 BULAN ALL-IN-ONE SECARA KOMPAK) ---
+        const gridClass = isLandscape ? 'print-grid-12-landscape' : 'print-grid-12-portrait';
+        const allMonths = [...monthsGasal, ...monthsGenap];
+
+        html += `
+          <div>
+            ${generatePrintKopHTML(`KALENDER PENDIDIKAN TAHUN AJARAN ${yearStr} (1 TAHUN PENUH)`, true)}
+            <div class="${gridClass}">
+              ${allMonths.map(m => generatePrintMonthCardHTML(m, baseYear + m.yearOffset, true)).join('')}
+            </div>
+            ${generatePrintSignatureHTML('1 Tahun Ajaran', true)}
+          </div>
+        `;
+
+        if (includeTable) {
+          html += generatePrintAgendaTableHTML(AppState.events, '1 Tahun Penuh');
+        }
+      }
+
+      container.innerHTML = html;
+    }
+
     function executeExportPdf() {
-      const scope = document.querySelector('input[name="export-scope"]:checked')?.value || 'gasal';
+      const scope = document.querySelector('input[name="export-scope"]:checked')?.value || 'full-2page';
       const orientation = document.querySelector('input[name="export-orient"]:checked')?.value || 'landscape';
       const includeTable = document.getElementById('export-include-table')?.checked ?? true;
 
-      const previousSemester = AppState.currentSemester;
-
-      AppState.setSemester(scope);
-      renderCalendar();
-
+      // Konfigurasi @page CSS ukuran & margin presisi
       const dynamicStyle = document.getElementById('dynamic-print-page-style');
-      const pageMargin = orientation === 'landscape' ? '6mm 8mm 6mm 8mm' : '8mm 8mm 8mm 8mm';
+      const pageMargin = orientation === 'landscape' ? '6mm 7mm 6mm 7mm' : '7mm 7mm 7mm 7mm';
       dynamicStyle.innerHTML = `
         @media print {
           @page {
@@ -1944,32 +2279,15 @@
         }
       `;
 
-      document.body.classList.remove('print-mode-landscape', 'print-mode-portrait', 'print-scope-gasal', 'print-scope-genap', 'print-scope-full');
-      document.body.classList.add(`print-mode-${orientation}`);
-      document.body.classList.add(`print-scope-${scope}`);
-
-      const printAppendix = document.querySelector('.print-only.mt-4.page-break');
-      if (printAppendix) {
-        if (!includeTable) {
-          printAppendix.style.display = 'none';
-        } else {
-          printAppendix.style.display = '';
-        }
-      }
+      // Bangun struktur DOM dokumen cetak A4
+      buildPrintDocument(scope, orientation, includeTable);
 
       closeExportModal();
-      showToast(`Mempersiapkan dokumen A4 (${scope.toUpperCase()}, ${orientation.toUpperCase()})...`, 'info');
+      showToast(`Mempersiapkan dokumen A4 (${orientation.toUpperCase()}, ${scope.toUpperCase()})...`, 'info');
 
+      // Berikan jeda sejenak untuk rendering layout DOM cetak sebelum memanggil print preview
       setTimeout(() => {
         window.print();
-
-        setTimeout(() => {
-          if (previousSemester !== scope) {
-            AppState.setSemester(previousSemester);
-            renderCalendar();
-          }
-          if (printAppendix) printAppendix.style.display = '';
-        }, 500);
       }, 350);
     }
 
