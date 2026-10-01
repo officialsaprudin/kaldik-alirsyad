@@ -368,6 +368,8 @@
           <textarea id="event-description" rows="2" placeholder="Keterangan teknis pelaksanaan kegiatan..." class="w-full px-3 py-2 border border-slate-300 rounded-xl font-normal focus:ring-2 focus:ring-emerald-500 focus:outline-none"></textarea>
         </div>
 
+        <input type="hidden" id="event-original-ids">
+
         <div class="flex items-center justify-between pt-3 border-t border-slate-100">
           <button type="button" id="btn-delete-event" onclick="deleteCurrentEvent()" class="hidden px-3.5 py-2 text-rose-600 hover:bg-rose-50 rounded-xl font-bold transition">
             Hapus
@@ -1255,15 +1257,139 @@
       renderAgendaList(relevantEvents);
     }
 
+    function formatGroupedDates(ranges) {
+      if (!ranges || ranges.length === 0) return '';
+      const sorted = [...ranges].sort((a, b) => a.start_date.localeCompare(b.start_date));
+
+      if (sorted.length === 1) {
+        const r = sorted[0];
+        const d1 = new Date(r.start_date + 'T00:00:00');
+        const d2 = new Date(r.end_date + 'T00:00:00');
+        const sDay = d1.getDate();
+        const eDay = d2.getDate();
+        const sMonth = INDO_MONTHS[d1.getMonth()].name;
+        const eMonth = INDO_MONTHS[d2.getMonth()].name;
+        const sYear = d1.getFullYear();
+        const eYear = d2.getFullYear();
+
+        if (r.start_date === r.end_date) {
+          return `${sDay} ${sMonth} ${sYear}`;
+        }
+        if (sYear === eYear && d1.getMonth() === d2.getMonth()) {
+          return `${sDay} - ${eDay} ${sMonth} ${sYear}`;
+        }
+        if (sYear === eYear) {
+          return `${sDay} ${sMonth} - ${eDay} ${eMonth} ${sYear}`;
+        }
+        return `${sDay} ${sMonth} ${sYear} - ${eDay} ${eMonth} ${eYear}`;
+      }
+
+      // Pengelompokan multi-tanggal per bulan & tahun
+      const monthGroups = [];
+      sorted.forEach(r => {
+        const d1 = new Date(r.start_date + 'T00:00:00');
+        const d2 = new Date(r.end_date + 'T00:00:00');
+        
+        if (d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth()) {
+          const key = `${d1.getFullYear()}-${d1.getMonth()}`;
+          let g = monthGroups.find(x => x.key === key);
+          if (!g) {
+            g = {
+              key,
+              year: d1.getFullYear(),
+              monthIndex: d1.getMonth(),
+              monthName: INDO_MONTHS[d1.getMonth()].name,
+              parts: []
+            };
+            monthGroups.push(g);
+          }
+          if (r.start_date === r.end_date) {
+            g.parts.push(`${d1.getDate()}`);
+          } else {
+            g.parts.push(`${d1.getDate()} - ${d2.getDate()}`);
+          }
+        } else {
+          const sDay = d1.getDate();
+          const eDay = d2.getDate();
+          const sMonth = INDO_MONTHS[d1.getMonth()].name;
+          const eMonth = INDO_MONTHS[d2.getMonth()].name;
+          const sYear = d1.getFullYear();
+          const eYear = d2.getFullYear();
+          monthGroups.push({
+            key: `${r.start_date}_${r.end_date}`,
+            year: eYear,
+            monthIndex: d2.getMonth(),
+            monthName: '',
+            parts: [sYear === eYear ? `${sDay} ${sMonth} - ${eDay} ${eMonth}` : `${sDay} ${sMonth} ${sYear} - ${eDay} ${eMonth} ${eYear}`],
+            isCross: true
+          });
+        }
+      });
+
+      const allYears = [...new Set(monthGroups.map(g => g.year))];
+      const singleYear = allYears.length === 1 ? allYears[0] : null;
+
+      const segments = monthGroups.map((g, idx) => {
+        const isLast = idx === monthGroups.length - 1;
+        if (g.isCross) {
+          return singleYear ? g.parts[0] : `${g.parts[0]} ${g.year}`;
+        }
+        const daysStr = g.parts.join(', ');
+        if (singleYear) {
+          return isLast ? `${daysStr} ${g.monthName} ${singleYear}` : `${daysStr} ${g.monthName}`;
+        } else {
+          return `${daysStr} ${g.monthName} ${g.year}`;
+        }
+      });
+
+      return segments.join(', ');
+    }
+
+    function getGroupedAgendas(eventsList) {
+      const groups = new Map();
+
+      eventsList.forEach(ev => {
+        const key = `${ev.title.trim().toLowerCase()}|||${ev.category}`;
+        if (!groups.has(key)) {
+          groups.set(key, {
+            key,
+            title: ev.title.trim(),
+            category: ev.category,
+            description: ev.description || '',
+            ranges: [],
+            rawEvents: []
+          });
+        }
+        const grp = groups.get(key);
+        grp.ranges.push({ start_date: ev.start_date, end_date: ev.end_date });
+        grp.rawEvents.push(ev);
+        if (!grp.description && ev.description) grp.description = ev.description;
+      });
+
+      const list = [];
+      groups.forEach(g => {
+        g.ranges.sort((a, b) => a.start_date.localeCompare(b.start_date));
+        g.firstStartDate = g.ranges[0]?.start_date || '';
+        g.dateText = formatGroupedDates(g.ranges);
+        const cat = AppState.categories[g.category] || { label: g.category || 'Agenda', color: '#059669', isHoliday: false };
+        g.categoryObj = cat;
+        g.isHoliday = !!cat.isHoliday;
+        list.push(g);
+      });
+
+      list.sort((a, b) => a.firstStartDate.localeCompare(b.firstStartDate));
+      return list;
+    }
+
     function renderAgendaList(eventsList) {
       const container = document.getElementById('agenda-items-container');
       const badge = document.getElementById('agenda-count-badge');
       if (!container) return;
 
-      const sorted = [...eventsList].sort((a, b) => a.start_date.localeCompare(b.start_date));
-      if (badge) badge.innerText = `${sorted.length} Agenda`;
+      const grouped = getGroupedAgendas(eventsList);
+      if (badge) badge.innerText = `${grouped.length} Agenda`;
 
-      if (sorted.length === 0) {
+      if (grouped.length === 0) {
         container.innerHTML = `
           <div class="text-center py-8 text-slate-400 text-xs">
             <i data-lucide="calendar-x" class="w-8 h-8 mx-auto mb-2 text-slate-300"></i>
@@ -1275,33 +1401,115 @@
         return;
       }
 
-      container.innerHTML = sorted.map(ev => {
-        const cat = AppState.categories[ev.category] || { label: ev.category || 'Agenda', color: '#059669', isHoliday: false };
-        const contrast = getContrastTextColor(cat.color);
-        return `
-          <div onclick="editEvent('${ev.id}')" class="group p-3 rounded-xl border border-slate-200/90 hover:border-emerald-400 hover:shadow-xs transition bg-white cursor-pointer relative flex flex-col space-y-1">
-            <div class="flex items-center justify-between">
-              <span class="inline-flex items-center space-x-1.5 px-2 py-0.5 rounded text-[10px] font-bold" style="background-color: ${cat.color}; color: ${contrast};">
-                <span>${cat.label}</span>
+      const holidays = grouped.filter(g => g.isHoliday);
+      const regular = grouped.filter(g => !g.isHoliday);
+
+      const renderScreenRows = (list) => {
+        return list.map((g, idx) => `
+          <tr class="group hover:bg-emerald-50/50 transition cursor-pointer border-b border-slate-200" onclick="editGroupedAgenda('${g.key}')">
+            <td class="py-2 px-1.5 text-center font-black text-slate-800 text-[11px] border-r border-slate-200">${idx + 1}</td>
+            <td class="p-1 text-center border-r border-slate-200">
+              <span class="w-6 h-5 rounded-xs flex items-center justify-center mx-auto shadow-2xs text-[9px]" style="background-color: ${g.categoryObj.color}; color: ${getContrastTextColor(g.categoryObj.color)};">
+                ${g.categoryObj.logo ? renderCategoryLogoHTML(g.categoryObj.logo, false) : ''}
               </span>
-              <div class="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition">
-                <button type="button" onclick="event.stopPropagation(); editEvent('${ev.id}')" title="Edit Agenda" class="p-1 text-slate-400 hover:text-emerald-600 rounded">
-                  <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
-                </button>
-                <button type="button" onclick="deleteAgendaItem('${ev.id}', event)" title="Hapus Agenda" class="p-1 text-slate-400 hover:text-rose-600 rounded">
-                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                </button>
-              </div>
-            </div>
-            <h5 class="font-bold text-slate-800 text-xs leading-snug group-hover:text-emerald-700 transition">${ev.title}</h5>
-            <div class="flex items-center space-x-2 text-[10px] text-slate-500 font-medium">
-              <i data-lucide="calendar" class="w-3 h-3 text-slate-400"></i>
-              <span>${formatDateRange(ev.start_date, ev.end_date)}</span>
-            </div>
-            ${ev.description ? `<p class="text-[10px] text-slate-500 line-clamp-2 pt-0.5 border-t border-slate-100">${ev.description}</p>` : ''}
+            </td>
+            <td class="py-2 px-2 text-[11px] text-slate-700 leading-tight border-r border-slate-200 font-medium">
+              ${g.dateText}
+            </td>
+            <td class="py-2 px-2 text-xs font-bold text-slate-900 leading-snug">
+              <div>${g.title}</div>
+              ${g.description ? `<div class="text-[10px] text-slate-500 font-normal line-clamp-1 mt-0.5">${g.description}</div>` : ''}
+            </td>
+            <td class="py-1 px-1 text-center w-8" onclick="event.stopPropagation();">
+              <button type="button" onclick="deleteGroupedAgenda('${g.key}', event)" title="Hapus Agenda" class="p-1 text-slate-400 hover:text-rose-600 rounded transition opacity-0 group-hover:opacity-100">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+              </button>
+            </td>
+          </tr>
+        `).join('');
+      };
+
+      const hasSeparator = holidays.length > 0 && regular.length > 0;
+
+      container.innerHTML = `
+        <div class="border border-slate-300 rounded-xl overflow-hidden bg-white shadow-2xs">
+          <div class="bg-white border-b border-slate-300 px-3 py-1.5 flex items-center justify-between">
+            <span class="font-black text-xs text-slate-900 uppercase tracking-wide">KETERANGAN</span>
+            <span class="text-[10px] font-semibold text-slate-400">Klik baris untuk edit</span>
           </div>
-        `;
-      }).join('');
+          <div class="overflow-x-auto custom-scrollbar">
+            <table class="w-full border-collapse text-left">
+              <thead>
+                <tr class="bg-[#FCE4D6] text-slate-900 font-black text-[10px] border-b border-slate-300">
+                  <th class="py-1.5 px-1.5 w-9 text-center border-r border-slate-300">No</th>
+                  <th class="py-1.5 px-1.5 w-12 text-center border-r border-slate-300">Warna</th>
+                  <th class="py-1.5 px-2 w-48 border-r border-slate-300">Tanggal</th>
+                  <th class="py-1.5 px-2">Agenda</th>
+                  <th class="py-1.5 px-1 w-8 text-center"></th>
+                </tr>
+              </thead>
+              <tbody>
+                ${renderScreenRows(holidays)}
+                ${hasSeparator ? '<tr class="bg-[#D9E1F2]"><td colspan="5" class="h-3.5 border-y border-slate-300 bg-[#D9E1F2]"></td></tr>' : ''}
+                ${renderScreenRows(regular)}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+      lucide.createIcons();
+    }
+
+    async function deleteGroupedAgenda(key, e) {
+      if (e) e.stopPropagation();
+      const groups = getGroupedAgendas(AppState.events);
+      const grp = groups.find(g => g.key === key);
+      if (!grp) return;
+      for (const ev of grp.rawEvents) {
+        await DataService.deleteEvent(ev.id);
+      }
+      renderCalendar();
+      showToast(`Agenda "${grp.title}" berhasil dihapus`, "info");
+    }
+
+    function editGroupedAgenda(key) {
+      const groups = getGroupedAgendas(AppState.events);
+      const grp = groups.find(g => g.key === key);
+      if (!grp || grp.rawEvents.length === 0) return;
+      openGroupedEventModal(grp);
+    }
+
+    function openGroupedEventModal(grp) {
+      const modal = document.getElementById('modal-event');
+      const form = document.getElementById('form-event');
+      const title = document.getElementById('modal-event-title');
+      const btnDelete = document.getElementById('btn-delete-event');
+
+      form.reset();
+      populateCategoryDropdown(grp.category);
+      resetDateRanges();
+
+      title.innerHTML = `<i data-lucide="edit-3" class="w-4 h-4 text-emerald-600"></i><span>Edit Agenda Kaldik</span>`;
+      document.getElementById('event-id').value = grp.rawEvents[0].id;
+      
+      let origInput = document.getElementById('event-original-ids');
+      if (origInput) {
+        origInput.value = JSON.stringify(grp.rawEvents.map(e => e.id));
+      }
+
+      document.getElementById('event-title').value = grp.title;
+      document.getElementById('event-start-date').value = grp.ranges[0].start_date;
+      document.getElementById('event-end-date').value = grp.ranges[0].end_date;
+      document.getElementById('event-category').value = grp.category;
+      document.getElementById('event-description').value = grp.description || '';
+      btnDelete.classList.remove('hidden');
+
+      for (let i = 1; i < grp.ranges.length; i++) {
+        addDateRangeRow(grp.ranges[i].start_date, grp.ranges[i].end_date);
+      }
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
       lucide.createIcons();
     }
 
@@ -1664,6 +1872,8 @@
 
       form.reset();
       document.getElementById('event-id').value = '';
+      const origInput = document.getElementById('event-original-ids');
+      if (origInput) origInput.value = '';
       populateCategoryDropdown();
       resetDateRanges();
 
@@ -1698,7 +1908,15 @@
 
     function editEvent(id) {
       const ev = AppState.events.find(e => e.id === id);
-      if (ev) openEventModal(ev);
+      if (!ev) return;
+      const key = `${ev.title.trim().toLowerCase()}|||${ev.category}`;
+      const grouped = getGroupedAgendas(AppState.events);
+      const grp = grouped.find(g => g.key === key);
+      if (grp) {
+        openGroupedEventModal(grp);
+      } else {
+        openEventModal(ev);
+      }
     }
 
     async function handleEventSubmit(e) {
@@ -1735,9 +1953,21 @@
         return;
       }
 
+      const origIdsStr = document.getElementById('event-original-ids')?.value;
+      if (origIdsStr) {
+        try {
+          const origIds = JSON.parse(origIdsStr);
+          for (const oldId of origIds) {
+            await DataService.deleteEvent(oldId);
+          }
+        } catch (err) {}
+      } else if (id) {
+        await DataService.deleteEvent(id);
+      }
+
       for (let i = 0; i < dateRanges.length; i++) {
         const range = dateRanges[i];
-        const eventId = (i === 0 && id) ? id : ('id_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5));
+        const eventId = 'id_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
         await DataService.saveEvent({
           id: eventId,
           title,
@@ -1750,13 +1980,22 @@
 
       closeEventModal();
       renderCalendar();
-      showToast(dateRanges.length > 1 ? `${dateRanges.length} jadwal agenda berhasil disimpan` : (id ? "Agenda berhasil diperbarui" : "Agenda berhasil disimpan"), "success");
+      showToast(dateRanges.length > 1 ? `${dateRanges.length} jadwal agenda "${title}" berhasil disimpan` : (id ? "Agenda berhasil diperbarui" : "Agenda berhasil disimpan"), "success");
     }
 
     async function deleteCurrentEvent() {
-      const id = document.getElementById('event-id').value;
-      if (!id) return;
-      await DataService.deleteEvent(id);
+      const origIdsStr = document.getElementById('event-original-ids')?.value;
+      if (origIdsStr) {
+        try {
+          const origIds = JSON.parse(origIdsStr);
+          for (const oldId of origIds) {
+            await DataService.deleteEvent(oldId);
+          }
+        } catch (err) {}
+      } else {
+        const id = document.getElementById('event-id').value;
+        if (id) await DataService.deleteEvent(id);
+      }
       closeEventModal();
       renderCalendar();
       showToast("Agenda berhasil dihapus", "info");
@@ -2059,44 +2298,63 @@
     }
 
     function generatePrintAgendaTableHTML(eventsList, titleText) {
-      const sorted = [...eventsList].sort((a, b) => a.start_date.localeCompare(b.start_date));
-      let rowsHTML = '';
+      const grouped = getGroupedAgendas(eventsList);
+      const holidays = grouped.filter(g => g.isHoliday);
+      const regular = grouped.filter(g => !g.isHoliday);
 
-      if (sorted.length === 0) {
-        rowsHTML = `<tr><td colspan="5" class="border border-slate-400 p-2 text-center text-slate-400">Tidak ada agenda khusus.</td></tr>`;
+      const renderPrintRows = (list) => {
+        return list.map((g, idx) => `
+          <tr class="print-avoid-break">
+            <td class="border border-black p-1 text-center font-black">${idx + 1}</td>
+            <td class="border border-black p-1 text-center" style="background-color: ${g.categoryObj.color} !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;">
+              ${g.categoryObj.logo ? renderCategoryLogoHTML(g.categoryObj.logo, true) : ''}
+            </td>
+            <td class="border border-black p-1 text-left font-medium text-slate-900">${g.dateText}</td>
+            <td class="border border-black p-1 text-left font-bold text-slate-900">
+              ${g.title}
+              ${g.description ? `<span class="block text-[8px] font-normal text-slate-600 mt-0.5">${g.description}</span>` : ''}
+            </td>
+          </tr>
+        `).join('');
+      };
+
+      const holidayRows = renderPrintRows(holidays);
+      const regularRows = renderPrintRows(regular);
+      const hasSeparator = holidays.length > 0 && regular.length > 0;
+
+      let bodyContent = '';
+      if (grouped.length === 0) {
+        bodyContent = `<tr><td colspan="4" class="border border-black p-2 text-center text-slate-500">Tidak ada agenda pada periode ini.</td></tr>`;
       } else {
-        rowsHTML = sorted.map((ev, idx) => {
-          const cat = AppState.categories[ev.category] || { label: ev.category, color: '#059669' };
-          return `
-            <tr class="print-avoid-break">
-              <td class="border border-slate-400 p-1 text-center font-bold">${idx + 1}</td>
-              <td class="border border-slate-400 p-1 whitespace-nowrap">${formatDateRange(ev.start_date, ev.end_date)}</td>
-              <td class="border border-slate-400 p-1 font-medium">
-                <span class="inline-block w-2 h-2 rounded-full mr-1" style="background-color: ${cat.color};"></span>
-                <span>${cat.label}</span>
-              </td>
-              <td class="border border-slate-400 p-1 font-bold">${ev.title}</td>
-              <td class="border border-slate-400 p-1 text-slate-600">${ev.description || '-'}</td>
-            </tr>
-          `;
-        }).join('');
+        bodyContent = `
+          ${holidayRows}
+          ${hasSeparator ? '<tr class="bg-[#D9E1F2] print-avoid-break"><td colspan="4" class="border border-black h-3 bg-[#D9E1F2]" style="-webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;"></td></tr>' : ''}
+          ${regularRows}
+        `;
       }
 
       return `
         <div class="print-page-break pt-2">
-          <h3 class="text-xs font-bold uppercase border-b-2 border-slate-900 pb-1 mb-2">Lampiran Agenda & Kegiatan Pendidikan (${titleText})</h3>
-          <table class="w-full border-collapse text-[9px]">
-            <thead>
-              <tr class="bg-slate-100 text-left font-bold">
-                <th class="border border-slate-400 p-1 w-7 text-center">No</th>
-                <th class="border border-slate-400 p-1 w-28">Rentang Tanggal</th>
-                <th class="border border-slate-400 p-1 w-28">Kategori</th>
-                <th class="border border-slate-400 p-1">Nama Kegiatan / Agenda</th>
-                <th class="border border-slate-400 p-1 w-32">Keterangan</th>
-              </tr>
-            </thead>
-            <tbody>${rowsHTML}</tbody>
-          </table>
+          <div class="border border-black bg-white">
+            <table class="w-full border-collapse text-[9.5px]">
+              <thead>
+                <tr>
+                  <th colspan="4" class="border border-black bg-white px-2.5 py-1 text-left font-black text-xs uppercase tracking-wide text-black">
+                    KETERANGAN
+                  </th>
+                </tr>
+                <tr class="bg-[#FCE4D6] text-black font-black" style="-webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;">
+                  <th class="border border-black py-1 px-1.5 w-10 text-center">No</th>
+                  <th class="border border-black py-1 px-2 w-14 text-center">Warna</th>
+                  <th class="border border-black py-1 px-3 text-center w-72">Tanggal</th>
+                  <th class="border border-black py-1 px-3 text-center">Agenda</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${bodyContent}
+              </tbody>
+            </table>
+          </div>
         </div>
       `;
     }
