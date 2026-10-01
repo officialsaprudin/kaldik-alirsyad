@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>KaldikPro Enterprise - Kalender Pendidikan Madrasah & Sekolah</title>
-      <link rel="icon" type="image/png" href="poto.png">
+  <link rel="icon" type="image/png" href="poto.png">
 
   <!-- Google Fonts: Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -79,26 +79,34 @@
       .print-grid-6-landscape {
         display: grid !important;
         grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-        gap: 6px !important;
+        gap: 4px !important;
       }
       .print-grid-6-portrait {
         display: grid !important;
         grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-        gap: 6px !important;
+        gap: 4px !important;
       }
       .print-grid-12-landscape {
         display: grid !important;
         grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-        gap: 3.5px !important;
+        gap: 3px !important;
       }
       .print-grid-12-portrait {
         display: grid !important;
         grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-        gap: 3.5px !important;
+        gap: 3px !important;
       }
       .compact-cell {
         height: 1.15rem !important;
         font-size: 8px !important;
+      }
+      .compact-sem-cell {
+        height: 1.25rem !important;
+        font-size: 8.5px !important;
+      }
+      .print-semester-page {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
       }
     }
     .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
@@ -2182,29 +2190,31 @@
 
     function generatePrintKopHTML(docTitle, isCompact = false) {
       const sc = AppState.school;
-      const sizeKiri = isCompact ? Math.round(sc.logoKiriSize * 0.85) : sc.logoKiriSize;
-      const sizeKanan = isCompact ? Math.round(sc.logoKananSize * 0.85) : sc.logoKananSize;
+      // Batasi tinggi logo maksimal agar KOP ringkas & seluruh 6 bulan muat dalam 1 lembar
+      const maxLogoH = isCompact ? 30 : 38;
+      const sizeKiri = Math.min(sc.logoKiriSize || 55, maxLogoH);
+      const sizeKanan = Math.min(sc.logoKananSize || 55, maxLogoH);
 
       const logoKiri = sc.logoKementerian
-        ? `<img src="${sc.logoKementerian}" style="height:${sizeKiri}px; max-width:${Math.round(sizeKiri * 1.6)}px; object-fit:contain;" alt="Logo Kementerian">`
+        ? `<img src="${sc.logoKementerian}" style="height:${sizeKiri}px; max-width:${Math.round(sizeKiri * 1.5)}px; object-fit:contain;" alt="Logo Kementerian">`
         : `<div style="height:${sizeKiri}px; width:${sizeKiri}px;"></div>`;
 
       const logoKanan = sc.logoSekolah
-        ? `<img src="${sc.logoSekolah}" style="height:${sizeKanan}px; max-width:${Math.round(sizeKanan * 1.6)}px; object-fit:contain;" alt="Logo Madrasah">`
+        ? `<img src="${sc.logoSekolah}" style="height:${sizeKanan}px; max-width:${Math.round(sizeKanan * 1.5)}px; object-fit:contain;" alt="Logo Madrasah">`
         : `<div style="height:${sizeKanan}px; width:${sizeKanan}px;"></div>`;
 
       return `
-        <div class="print-avoid-break border-b-2 border-slate-900 pb-2 mb-2 text-center">
+        <div class="print-avoid-break border-b-2 border-slate-900 pb-1 mb-1.5 text-center">
           <div class="flex items-center justify-between px-1">
             <div class="flex items-center justify-start shrink-0" style="min-width:${sizeKiri}px;">
               ${logoKiri}
             </div>
-            <div class="flex-1 text-center px-3">
-              <h2 class="text-[10px] font-bold uppercase tracking-wider text-slate-700">${sc.instansi}</h2>
-              <h1 class="${isCompact ? 'text-sm' : 'text-base'} font-black uppercase text-slate-900 leading-tight">${sc.name}</h1>
-              <p class="text-[9px] text-slate-600 leading-tight">${sc.address} ${sc.npsn ? `- NPSN: ${sc.npsn}` : ''}</p>
-              <div class="mt-1 inline-block border-t border-slate-800 px-4 pt-0.5">
-                <span class="${isCompact ? 'text-[9.5px]' : 'text-[10.5px]'} font-bold tracking-wide uppercase text-slate-900">${docTitle}</span>
+            <div class="flex-1 text-center px-2">
+              <h2 class="text-[9px] font-bold uppercase tracking-wider text-slate-700 leading-tight">${sc.instansi}</h2>
+              <h1 class="${isCompact ? 'text-xs' : 'text-sm'} font-black uppercase text-slate-900 leading-tight">${sc.name}</h1>
+              <p class="text-[8px] text-slate-600 leading-tight">${sc.address} ${sc.npsn ? `- NPSN: ${sc.npsn}` : ''}</p>
+              <div class="mt-0.5 inline-block border-t border-slate-800 px-3 pt-0.5">
+                <span class="${isCompact ? 'text-[8.5px]' : 'text-[9.5px]'} font-extrabold tracking-wide uppercase text-slate-900 whitespace-nowrap">${docTitle}</span>
               </div>
             </div>
             <div class="flex items-center justify-end shrink-0" style="min-width:${sizeKanan}px;">
@@ -2223,19 +2233,19 @@
 
       let html = `
         <div class="print-avoid-break border border-slate-300 rounded-lg overflow-hidden bg-white">
-          <div class="${headerColor} ${isCompact ? 'px-2 py-0.5 text-[9px]' : 'px-2.5 py-1 text-[10px]'} flex items-center justify-between font-bold">
+          <div class="${headerColor} ${isCompact ? 'px-2 py-0.5 text-[8.5px]' : 'px-2 py-0.5 text-[9px]'} flex items-center justify-between font-bold leading-tight">
             <span>${m.name.toUpperCase()} ${actualYear}</span>
-            <span class="text-[8px] font-normal opacity-80 uppercase">${m.semester}</span>
+            <span class="text-[7.5px] font-normal opacity-80 uppercase">${m.semester}</span>
           </div>
-          <div class="${isCompact ? 'p-1' : 'p-1.5'}">
-            <div class="grid grid-cols-7 gap-0.5 text-center ${isCompact ? 'text-[8px] pb-0.5 mb-0.5' : 'text-[9px] pb-1 mb-1'} font-bold text-slate-500 border-b border-slate-100">
+          <div class="${isCompact ? 'p-0.5' : 'p-1'}">
+            <div class="grid grid-cols-7 gap-0.5 text-center ${isCompact ? 'text-[7.5px] pb-0.5 mb-0.5' : 'text-[8px] pb-0.5 mb-0.5'} font-bold text-slate-500 border-b border-slate-100">
               ${dayHeaders.map((dh, idx) => `<span class="${idx === 0 ? 'text-red-500' : ''}">${dh}</span>`).join('')}
             </div>
             <div class="grid grid-cols-7 gap-0.5 text-center">
       `;
 
       for (let i = 0; i < firstDay; i++) {
-        html += `<div class="${isCompact ? 'compact-cell' : 'h-6'} w-full"></div>`;
+        html += `<div class="${isCompact ? 'compact-cell' : 'compact-sem-cell'} w-full"></div>`;
       }
 
       for (let day = 1; day <= totalDays; day++) {
@@ -2245,7 +2255,7 @@
         const isFriday = currentDayOfWeek === 5;
         const event = getEventForDate(dateStr);
 
-        let cellClass = `${isCompact ? 'compact-cell' : 'h-6'} w-full flex items-center justify-center rounded font-semibold text-[9.5px] `;
+        let cellClass = `${isCompact ? 'compact-cell' : 'compact-sem-cell'} w-full flex items-center justify-center rounded font-semibold text-[8.5px] `;
         let customStyle = "";
         let printLogoHTML = '';
 
@@ -2284,11 +2294,11 @@
     function generatePrintSignatureHTML(semesterText, isCompact = false) {
       const sc = AppState.school;
       return `
-        <div class="print-avoid-break mt-2.5 pt-1.5 border-t border-slate-300 text-[9px]">
-          <div class="grid grid-cols-3 gap-3">
+        <div class="print-avoid-break mt-1.5 pt-1 border-t border-slate-300 text-[8.5px] leading-tight">
+          <div class="grid grid-cols-3 gap-2">
             <div class="col-span-2">
-              <h5 class="font-bold uppercase text-[8.5px] mb-0.5">CATATAN KHUSUS MADRASAH (${semesterText.toUpperCase()}):</h5>
-              <ol class="list-decimal pl-3 space-y-0.5 text-[8.5px] text-slate-700">
+              <h5 class="font-bold uppercase text-[8px] mb-0.5">CATATAN KHUSUS MADRASAH (${semesterText.toUpperCase()}):</h5>
+              <ol class="list-decimal pl-3 space-y-0.2 text-[8px] text-slate-700">
                 <li>Hari Efektif Belajar (HEB) tidak termasuk hari libur resmi dan cuti keagamaan.</li>
                 <li>Jadwal asesmen/ujian dapat disesuaikan dengan edaran resmi Kemenag / Disdik.</li>
                 <li>Rencana Pekan Efektif (RPE) semester berjalan mengacu pedoman standar kurikulum aktif.</li>
@@ -2297,7 +2307,7 @@
             <div class="text-center">
               <p>${sc.city}, ${sc.docDate}</p>
               <p class="font-semibold">Kepala Madrasah / Sekolah,</p>
-              <div class="${isCompact ? 'h-10' : 'h-12'}"></div>
+              <div class="${isCompact ? 'h-6' : 'h-8'}"></div>
               <p class="font-bold underline uppercase">${sc.principal}</p>
               <p>NIP. ${sc.principalNip}</p>
             </div>
@@ -2374,7 +2384,7 @@
       const includeTable = document.getElementById('export-include-table')?.checked ?? true;
 
       const dynamicStyle = document.getElementById('dynamic-print-page-style');
-      const pageMargin = orientation === 'landscape' ? '6mm 7mm 6mm 7mm' : '7mm 7mm 7mm 7mm';
+      const pageMargin = orientation === 'landscape' ? '4.5mm 6mm 4.5mm 6mm' : '5mm 6mm 5mm 6mm';
       dynamicStyle.innerHTML = `
         @media print {
           @page {
@@ -2396,7 +2406,7 @@
       if (scope === 'gasal') {
         const gridClass = isLandscape ? 'print-grid-6-landscape' : 'print-grid-6-portrait';
         html += `
-          <div>
+          <div class="print-semester-page print-avoid-break">
             ${generatePrintKopHTML(`KALENDER PENDIDIKAN TAHUN AJARAN ${yearStr} - SEMESTER GASAL`, false)}
             <div class="${gridClass}">
               ${monthsGasal.map(m => generatePrintMonthCardHTML(m, baseYear + m.yearOffset, false)).join('')}
@@ -2414,7 +2424,7 @@
       } else if (scope === 'genap') {
         const gridClass = isLandscape ? 'print-grid-6-landscape' : 'print-grid-6-portrait';
         html += `
-          <div>
+          <div class="print-semester-page print-avoid-break">
             ${generatePrintKopHTML(`KALENDER PENDIDIKAN TAHUN AJARAN ${yearStr} - SEMESTER GENAP`, false)}
             <div class="${gridClass}">
               ${monthsGenap.map(m => generatePrintMonthCardHTML(m, baseYear + m.yearOffset, false)).join('')}
@@ -2432,14 +2442,15 @@
       } else if (scope === 'full-2page') {
         const gridClass = isLandscape ? 'print-grid-6-landscape' : 'print-grid-6-portrait';
         html += `
-          <div>
+          <div class="print-semester-page print-avoid-break">
             ${generatePrintKopHTML(`KALENDER PENDIDIKAN TAHUN AJARAN ${yearStr} - SEMESTER GASAL`, false)}
             <div class="${gridClass}">
               ${monthsGasal.map(m => generatePrintMonthCardHTML(m, baseYear + m.yearOffset, false)).join('')}
             </div>
             ${generatePrintSignatureHTML('Semester Gasal', false)}
           </div>
-          <div class="print-page-break">
+          <div class="print-page-break"></div>
+          <div class="print-semester-page print-avoid-break pt-1">
             ${generatePrintKopHTML(`KALENDER PENDIDIKAN TAHUN AJARAN ${yearStr} - SEMESTER GENAP`, false)}
             <div class="${gridClass}">
               ${monthsGenap.map(m => generatePrintMonthCardHTML(m, baseYear + m.yearOffset, false)).join('')}
@@ -2452,7 +2463,7 @@
         const gridClass = isLandscape ? 'print-grid-12-landscape' : 'print-grid-12-portrait';
         const allMonths = [...monthsGasal, ...monthsGenap];
         html += `
-          <div>
+          <div class="print-semester-page print-avoid-break">
             ${generatePrintKopHTML(`KALENDER PENDIDIKAN TAHUN AJARAN ${yearStr} (1 TAHUN PENUH)`, true)}
             <div class="${gridClass}">
               ${allMonths.map(m => generatePrintMonthCardHTML(m, baseYear + m.yearOffset, true)).join('')}
