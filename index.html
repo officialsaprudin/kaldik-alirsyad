@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>KaldikPro Enterprise - Kalender Pendidikan Madrasah & Sekolah</title>
-  <link rel="icon" type="image/png" href="poto.png">
+     <link rel="icon" type="image/png" href="poto.png">
 
   <!-- Google Fonts: Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -455,23 +455,56 @@
             </div>
           </div>
 
-          <!-- Palet Warna -->
-          <div>
-            <label class="block mb-1.5">Pilih Warna (12 Palet Populer & Custom):</label>
-            <div class="flex flex-wrap gap-2 items-center mb-2.5 p-2 bg-white rounded-xl border border-slate-200" id="palette-swatches-container"></div>
-            <div class="flex items-center space-x-3 bg-white p-2.5 rounded-xl border border-slate-200">
-              <div class="flex items-center space-x-2">
-                <input type="color" id="category-color-picker" onchange="syncColorInput(this.value)" class="w-8 h-8 p-0 border border-slate-300 rounded-lg cursor-pointer bg-white">
-                <span class="text-[11px] text-slate-500 font-medium">Picker</span>
+          <!-- Palet Warna & Pola / Corak -->
+          <div class="space-y-2.5">
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <label class="block">Pilih Warna Utama (12 Palet Populer & Custom):</label>
+                <button type="button" onclick="applyPhoto2Preset()" class="text-[10px] bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 px-2 py-0.5 rounded font-bold transition flex items-center gap-1" title="Terapkan warna kuning dengan aksen garis bawah biru seperti Foto 2">
+                  <span>⚡ Preset Foto 2 (Kuning + Garis Bawah Biru)</span>
+                </button>
               </div>
-              <div class="flex-1 flex items-center space-x-2">
-                <span class="text-slate-400 font-mono text-xs">HEX:</span>
-                <input type="text" id="category-color-hex" oninput="syncColorPicker(this.value)" placeholder="#059669" maxlength="7" class="w-24 px-2 py-1 uppercase font-mono text-xs border border-slate-300 rounded-lg focus:ring-1 focus:ring-emerald-500">
+              <div class="flex flex-wrap gap-2 items-center mb-2.5 p-2 bg-white rounded-xl border border-slate-200" id="palette-swatches-container"></div>
+              <div class="flex items-center space-x-3 bg-white p-2.5 rounded-xl border border-slate-200">
+                <div class="flex items-center space-x-2">
+                  <input type="color" id="category-color-picker" onchange="syncColorInput(this.value)" class="w-8 h-8 p-0 border border-slate-300 rounded-lg cursor-pointer bg-white">
+                  <span class="text-[11px] text-slate-500 font-medium">Picker</span>
+                </div>
+                <div class="flex-1 flex items-center space-x-2">
+                  <span class="text-slate-400 font-mono text-xs">HEX:</span>
+                  <input type="text" id="category-color-hex" oninput="syncColorPicker(this.value)" placeholder="#059669" maxlength="7" class="w-24 px-2 py-1 uppercase font-mono text-xs border border-slate-300 rounded-lg focus:ring-1 focus:ring-emerald-500">
+                </div>
+                <div class="flex items-center space-x-1.5 pl-2 border-l border-slate-200">
+                  <span id="category-preview-badge" class="px-3 py-1 text-xs font-bold rounded-lg text-white shadow-2xs" style="background-color: #059669;">
+                    Pratinjau [ 17 🎓 ]
+                  </span>
+                </div>
               </div>
-              <div class="flex items-center space-x-1.5 pl-2 border-l border-slate-200">
-                <span id="category-preview-badge" class="px-3 py-1 text-xs font-bold rounded-lg text-white shadow-2xs" style="background-color: #059669;">
-                  Pratinjau [ 17 🎓 ]
-                </span>
+            </div>
+
+            <!-- Pilihan Corak / Pola & Gradien -->
+            <div class="p-2.5 bg-white rounded-xl border border-slate-200 space-y-2">
+              <div class="flex items-center justify-between">
+                <label class="block text-[11px] font-bold text-slate-700">Pola Corak / Gradien:</label>
+                <span class="text-[10px] text-slate-400">Pilih gaya visual kotak tanggal</span>
+              </div>
+              <select id="category-pattern" onchange="handlePatternChange()" class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg font-normal bg-white text-xs focus:ring-1 focus:ring-emerald-500">
+                <option value="solid">Warna Polos (Solid Color)</option>
+                <option value="stripe_bottom">Garis Bawah (Foto 2: Latar Warna + Garis di Bawah Tanggal)</option>
+                <option value="stripe_top">Garis Atas (Latar Warna + Garis di Atas Tanggal)</option>
+                <option value="stripe_diagonal">Arsir Diagonal (Corak Garis-Garis Miring)</option>
+                <option value="gradient_horizontal">Gradien Horizontal (Kiri ke Kanan)</option>
+                <option value="gradient_vertical">Gradien Vertikal (Atas ke Bawah)</option>
+                <option value="polka_dots">Bintik Polka Dots (Corak Titik-Titik Berpola)</option>
+              </select>
+
+              <!-- Warna Sekunder (Otomatis muncul untuk corak/garis/gradien) -->
+              <div id="category-secondary-color-box" class="hidden flex items-center space-x-3 pt-1 border-t border-slate-100">
+                <span class="text-[11px] text-slate-600 font-bold whitespace-nowrap">Warna Garis / Gradien:</span>
+                <div class="flex items-center space-x-2">
+                  <input type="color" id="category-color2-picker" value="#2563eb" onchange="syncColor2Input(this.value)" class="w-7 h-7 p-0 border border-slate-300 rounded-lg cursor-pointer bg-white">
+                  <input type="text" id="category-color2-hex" value="#2563EB" oninput="syncColor2Picker(this.value)" placeholder="#2563EB" maxlength="7" class="w-20 px-2 py-0.5 uppercase font-mono text-[11px] border border-slate-300 rounded-lg focus:ring-1 focus:ring-emerald-500">
+                </div>
               </div>
             </div>
           </div>
@@ -954,7 +987,15 @@
           if (cData && cData.length > 0) {
             const mapped = {};
             cData.forEach(c => {
-              mapped[c.id] = { id: c.id, label: c.name, color: c.color, isHoliday: c.is_holiday, logo: c.logo };
+              mapped[c.id] = { 
+                id: c.id, 
+                label: c.name, 
+                color: c.color, 
+                pattern: c.pattern || 'solid', 
+                color2: c.color2 || '#2563eb', 
+                isHoliday: c.is_holiday, 
+                logo: c.logo 
+              };
             });
             AppState.saveCategories(mapped);
           }
@@ -1055,6 +1096,31 @@
       return (yiq >= 150) ? '#0f172a' : '#ffffff';
     }
 
+    function getCategoryBackground(cat) {
+      if (!cat) return 'background-color: #059669 !important;';
+      const c1 = cat.color || '#059669';
+      const c2 = cat.color2 || '#2563eb';
+      const pattern = cat.pattern || 'solid';
+
+      switch (pattern) {
+        case 'stripe_bottom':
+          return `background: linear-gradient(to top, ${c2} 0px, ${c2} 3.5px, ${c1} 3.5px, ${c1} 100%) !important;`;
+        case 'stripe_top':
+          return `background: linear-gradient(to bottom, ${c2} 0px, ${c2} 3.5px, ${c1} 3.5px, ${c1} 100%) !important;`;
+        case 'stripe_diagonal':
+          return `background: repeating-linear-gradient(45deg, ${c1}, ${c1} 4px, ${c2} 4px, ${c2} 8px) !important;`;
+        case 'gradient_horizontal':
+          return `background: linear-gradient(to right, ${c1}, ${c2}) !important;`;
+        case 'gradient_vertical':
+          return `background: linear-gradient(to bottom, ${c1}, ${c2}) !important;`;
+        case 'polka_dots':
+          return `background-color: ${c1} !important; background-image: radial-gradient(${c2} 22%, transparent 22%) !important; background-size: 7px 7px !important;`;
+        case 'solid':
+        default:
+          return `background-color: ${c1} !important;`;
+      }
+    }
+
     function renderCategoryLogoHTML(logo, isPrint = false) {
       if (!logo || !logo.trim()) return '';
       const clean = logo.trim();
@@ -1072,9 +1138,10 @@
       if (!val || !val.trim()) {
         box.innerHTML = `<i data-lucide="image" class="w-4 h-4 text-slate-400"></i>`;
         lucide.createIcons();
-        return;
+      } else {
+        box.innerHTML = renderCategoryLogoHTML(val, false);
       }
-      box.innerHTML = renderCategoryLogoHTML(val, false);
+      updateCategoryPreviewBadge();
     }
 
     function setPresetCategoryIcon(icon) {
@@ -1191,7 +1258,7 @@
           } else if (event) {
             const cat = AppState.categories[event.category] || { label: 'Agenda', color: '#059669', isHoliday: false };
             const contrast = getContrastTextColor(cat.color);
-            customStyle = `background-color: ${cat.color} !important; color: ${contrast} !important;`;
+            customStyle = `${getCategoryBackground(cat)} color: ${contrast} !important;`;
             cellClass += "font-bold shadow-2xs hover:scale-105 ";
             tooltip += `: ${event.title} (${cat.label})`;
             if (cat.logo) {
@@ -1432,7 +1499,7 @@
           <tr class="group hover:bg-emerald-50/50 transition cursor-pointer border-b border-slate-200" onclick="editGroupedAgenda('${g.key}')">
             <td class="py-2 px-1.5 text-center font-black text-slate-800 text-[11px] border-r border-slate-200">${idx + 1}</td>
             <td class="p-1 text-center border-r border-slate-200">
-              <span class="w-6 h-5 rounded-xs flex items-center justify-center mx-auto shadow-2xs text-[9px]" style="background-color: ${g.categoryObj.color}; color: ${getContrastTextColor(g.categoryObj.color)};">
+              <span class="w-6 h-5 rounded-xs flex items-center justify-center mx-auto shadow-2xs text-[9px]" style="${getCategoryBackground(g.categoryObj)} color: ${getContrastTextColor(g.categoryObj.color)};">
                 ${g.categoryObj.logo ? renderCategoryLogoHTML(g.categoryObj.logo, false) : ''}
               </span>
             </td>
@@ -1565,7 +1632,7 @@
       container.innerHTML = cats.map(item => `
         <div class="flex items-center justify-between group py-0.5">
           <div class="flex items-center space-x-2.5 min-w-0">
-            <span class="w-4 h-4 rounded shrink-0 shadow-2xs flex items-center justify-center overflow-hidden" style="background-color: ${item.color}; color: ${getContrastTextColor(item.color)};">
+            <span class="w-4 h-4 rounded shrink-0 shadow-2xs flex items-center justify-center overflow-hidden" style="${getCategoryBackground(item)} color: ${getContrastTextColor(item.color)};">
               ${renderCategoryLogoHTML(item.logo, false)}
             </span>
             <span class="text-slate-700 font-semibold text-[11px] truncate">${item.label}</span>
@@ -1608,14 +1675,10 @@
     function syncColorInput(hex) {
       const hexInput = document.getElementById('category-color-hex');
       const pickerInput = document.getElementById('category-color-picker');
-      const previewBadge = document.getElementById('category-preview-badge');
 
       if (hexInput) hexInput.value = hex.toUpperCase();
       if (pickerInput) pickerInput.value = hex;
-      if (previewBadge) {
-        previewBadge.style.backgroundColor = hex;
-        previewBadge.style.color = getContrastTextColor(hex);
-      }
+      updateCategoryPreviewBadge();
     }
 
     function syncColorPicker(val) {
@@ -1624,11 +1687,64 @@
       if (/^#[0-9A-Fa-f]{6}$/.test(hex)) syncColorInput(hex);
     }
 
+    function syncColor2Input(hex) {
+      const hexInput = document.getElementById('category-color2-hex');
+      const pickerInput = document.getElementById('category-color2-picker');
+
+      if (hexInput) hexInput.value = hex.toUpperCase();
+      if (pickerInput) pickerInput.value = hex;
+      updateCategoryPreviewBadge();
+    }
+
+    function syncColor2Picker(val) {
+      let hex = val.trim();
+      if (!hex.startsWith('#')) hex = '#' + hex;
+      if (/^#[0-9A-Fa-f]{6}$/.test(hex)) syncColor2Input(hex);
+    }
+
+    function handlePatternChange() {
+      toggleSecondaryColorUI();
+      updateCategoryPreviewBadge();
+    }
+
+    function toggleSecondaryColorUI() {
+      const pattern = document.getElementById('category-pattern')?.value || 'solid';
+      const box = document.getElementById('category-secondary-color-box');
+      if (box) {
+        box.classList.toggle('hidden', pattern === 'solid');
+      }
+    }
+
+    function applyPhoto2Preset() {
+      if (document.getElementById('category-pattern')) {
+        document.getElementById('category-pattern').value = 'stripe_bottom';
+      }
+      syncColorInput('#FACC15');
+      syncColor2Input('#2563EB');
+      toggleSecondaryColorUI();
+      updateCategoryPreviewBadge();
+    }
+
+    function updateCategoryPreviewBadge() {
+      const badge = document.getElementById('category-preview-badge');
+      if (!badge) return;
+      const c1 = document.getElementById('category-color-hex')?.value?.trim() || '#059669';
+      const c2 = document.getElementById('category-color2-hex')?.value?.trim() || '#2563eb';
+      const pattern = document.getElementById('category-pattern')?.value || 'solid';
+      const logo = document.getElementById('category-input-logo')?.value?.trim() || '🎓';
+      const contrast = getContrastTextColor(c1);
+      const bg = getCategoryBackground({ color: c1, color2: c2, pattern: pattern });
+      badge.style.cssText = `${bg} color: ${contrast} !important;`;
+      badge.innerHTML = `Pratinjau [ 17 ${renderCategoryLogoHTML(logo, false) || logo} ]`;
+    }
+
     function openCategoryModal(openNew = false) {
       initPaletteSwatches();
       renderCategoryManagerList();
       resetCategoryForm();
       if (openNew) selectPaletteColor('#059669');
+      toggleSecondaryColorUI();
+      updateCategoryPreviewBadge();
 
       const modal = document.getElementById('modal-categories');
       modal.classList.remove('hidden');
@@ -1653,7 +1769,7 @@
         return `
           <div class="p-2.5 bg-white border border-slate-200 rounded-xl flex items-center justify-between hover:border-slate-300 transition">
             <div class="flex items-center space-x-3 min-w-0">
-              <span class="w-6 h-6 rounded-md shrink-0 shadow-2xs flex items-center justify-center overflow-hidden" style="background-color: ${cat.color}; color: ${getContrastTextColor(cat.color)};">
+              <span class="w-6 h-6 rounded-md shrink-0 shadow-2xs flex items-center justify-center overflow-hidden" style="${getCategoryBackground(cat)} color: ${getContrastTextColor(cat.color)};">
                 ${logoDisplay || ''}
               </span>
               <div>
@@ -1663,6 +1779,8 @@
                 </div>
                 <div class="flex items-center space-x-2 text-[10px] text-slate-400 mt-0.5">
                   <span class="font-mono uppercase">${cat.color}</span>
+                  <span>•</span>
+                  <span class="capitalize text-slate-500">${cat.pattern || 'solid'}</span>
                   <span>•</span>
                   <span>${eventsUsingCount} agenda terhubung</span>
                 </div>
@@ -1695,6 +1813,18 @@
       document.getElementById('category-is-holiday').checked = !!cat.isHoliday;
       syncColorInput(cat.color);
 
+      if (document.getElementById('category-pattern')) {
+        document.getElementById('category-pattern').value = cat.pattern || 'solid';
+      }
+      if (document.getElementById('category-color2-picker')) {
+        document.getElementById('category-color2-picker').value = cat.color2 || '#2563eb';
+      }
+      if (document.getElementById('category-color2-hex')) {
+        document.getElementById('category-color2-hex').value = (cat.color2 || '#2563eb').toUpperCase();
+      }
+      toggleSecondaryColorUI();
+      updateCategoryPreviewBadge();
+
       document.getElementById('category-form-title').innerHTML = `
         <i data-lucide="edit-2" class="w-3.5 h-3.5 text-emerald-600"></i>
         <span>Edit Kategori: ${cat.label}</span>
@@ -1716,6 +1846,18 @@
       document.getElementById('btn-save-category-label').innerText = "Simpan Kategori";
       document.getElementById('btn-cancel-edit-category').classList.add('hidden');
       selectPaletteColor('#059669');
+
+      if (document.getElementById('category-pattern')) {
+        document.getElementById('category-pattern').value = 'solid';
+      }
+      if (document.getElementById('category-color2-picker')) {
+        document.getElementById('category-color2-picker').value = '#2563eb';
+      }
+      if (document.getElementById('category-color2-hex')) {
+        document.getElementById('category-color2-hex').value = '#2563EB';
+      }
+      toggleSecondaryColorUI();
+      updateCategoryPreviewBadge();
       lucide.createIcons();
     }
 
@@ -1725,12 +1867,14 @@
       const label = document.getElementById('category-input-name').value.trim();
       const logo = document.getElementById('category-input-logo').value.trim();
       const color = document.getElementById('category-color-hex').value.trim().toUpperCase() || '#059669';
+      const pattern = document.getElementById('category-pattern')?.value || 'solid';
+      const color2 = document.getElementById('category-color2-hex')?.value?.trim().toUpperCase() || '#2563EB';
       const isHoliday = document.getElementById('category-is-holiday').checked;
 
       const id = editId || 'cat_' + Date.now().toString(36);
       const currentCats = { ...AppState.categories };
 
-      currentCats[id] = { id, label, color, logo, isHoliday };
+      currentCats[id] = { id, label, color, pattern, color2, logo, isHoliday };
       AppState.saveCategories(currentCats);
 
       if (!is_preview && supabaseClient) {
@@ -1738,6 +1882,8 @@
           id,
           name: label,
           color,
+          pattern,
+          color2,
           logo,
           is_holiday: isHoliday
         });
@@ -2272,7 +2418,7 @@
         } else if (event) {
           const cat = AppState.categories[event.category] || { label: 'Agenda', color: '#059669' };
           const contrast = getContrastTextColor(cat.color);
-          customStyle = `background-color: ${cat.color} !important; color: ${contrast} !important; font-weight: bold;`;
+          customStyle = `${getCategoryBackground(cat)} color: ${contrast} !important; font-weight: bold;`;
           if (cat.logo) printLogoHTML = renderCategoryLogoHTML(cat.logo, true);
         } else if (isFriday) {
           cellClass += "text-emerald-700 bg-emerald-50/30 font-medium ";
@@ -2332,7 +2478,7 @@
         return list.map((g, idx) => `
           <tr class="print-avoid-break">
             <td class="border border-black p-1 text-center font-black">${idx + 1}</td>
-            <td class="border border-black p-1 text-center" style="background-color: ${g.categoryObj.color} !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;">
+            <td class="border border-black p-1 text-center" style="${getCategoryBackground(g.categoryObj)} color: ${getContrastTextColor(g.categoryObj.color)} !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;">
               ${g.categoryObj.logo ? renderCategoryLogoHTML(g.categoryObj.logo, true) : ''}
             </td>
             <td class="border border-black p-1 text-left font-medium text-slate-900">${g.dateText}</td>
@@ -2615,14 +2761,20 @@
         .subscribe();
     }
 
-    window.addEventListener('DOMContentLoaded', () => {
+    function initApp() {
       lucide.createIcons();
       renderSchoolIdentity();
       renderLegend();
       renderCalendar();
       DataService.syncAll();
       initSupabaseRealtime();
-    });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initApp);
+    } else {
+      initApp();
+    }
   </script>
 </body>
 </html>
