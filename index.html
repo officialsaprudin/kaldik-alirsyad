@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>KaldikPro Enterprise - Kalender Pendidikan Madrasah & Sekolah</title>
-  <link rel="icon" type="image/png" href="poto.png">
+      <link rel="icon" type="image/png" href="poto.png">
 
   <!-- Google Fonts: Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -317,15 +317,39 @@
           <input type="text" id="event-title" required placeholder="Contoh: Matsama / Penilaian Akhir Semester" class="w-full px-3 py-2 border border-slate-300 rounded-xl font-normal focus:ring-2 focus:ring-emerald-500 focus:outline-none">
         </div>
 
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block mb-1">Tanggal Mulai *</label>
-            <input type="date" id="event-start-date" required class="w-full px-3 py-2 border border-slate-300 rounded-xl font-normal focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="block">Tanggal / Rentang Pelaksanaan *</label>
+            <button type="button" onclick="addDateRangeRow()" class="text-[11px] text-emerald-600 hover:text-emerald-700 font-bold flex items-center gap-1 transition">
+              <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
+              <span>+ Tambah Tanggal / Bulan Lain</span>
+            </button>
           </div>
-          <div>
-            <label class="block mb-1">Tanggal Selesai *</label>
-            <input type="date" id="event-end-date" required class="w-full px-3 py-2 border border-slate-300 rounded-xl font-normal focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          
+          <div id="date-ranges-container" class="space-y-2.5 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+            <div class="date-range-row bg-slate-50/80 p-2.5 rounded-xl border border-slate-200/90 space-y-1.5">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] font-bold text-slate-600 flex items-center gap-1">
+                  <i data-lucide="calendar" class="w-3 h-3 text-emerald-600"></i>
+                  <span>Jadwal 1</span>
+                </span>
+                <span class="text-[9px] text-slate-400">Utama</span>
+              </div>
+              <div class="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label class="block text-[10px] text-slate-500 mb-0.5">Tanggal Mulai *</label>
+                  <input type="date" id="event-start-date" required onchange="syncRowEndDate(this)" class="range-start-input w-full px-2.5 py-1.5 border border-slate-300 rounded-lg font-normal bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none text-xs">
+                </div>
+                <div>
+                  <label class="block text-[10px] text-slate-500 mb-0.5">Tanggal Selesai *</label>
+                  <input type="date" id="event-end-date" required class="range-end-input w-full px-2.5 py-1.5 border border-slate-300 rounded-lg font-normal bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none text-xs">
+                </div>
+              </div>
+            </div>
           </div>
+          <p class="text-[10px] text-slate-400 font-normal mt-1 leading-tight">
+            Gunakan tombol <strong>+ Tambah Tanggal / Bulan Lain</strong> jika agenda yang sama berlangsung di beberapa tanggal atau bulan yang terpisah.
+          </p>
         </div>
 
         <div>
@@ -1566,6 +1590,72 @@
       else openEventModal({ start_date: dateStr, end_date: dateStr });
     }
 
+    function addDateRangeRow(startDate = '', endDate = '') {
+      const container = document.getElementById('date-ranges-container');
+      if (!container) return;
+      const count = container.querySelectorAll('.date-range-row').length + 1;
+
+      const row = document.createElement('div');
+      row.className = "date-range-row bg-slate-50/80 p-2.5 rounded-xl border border-slate-200/90 space-y-1.5 transition";
+      row.innerHTML = `
+        <div class="flex items-center justify-between">
+          <span class="text-[10px] font-bold text-slate-600 flex items-center gap-1">
+            <i data-lucide="calendar" class="w-3 h-3 text-emerald-600"></i>
+            <span>Jadwal ${count}</span>
+          </span>
+          <button type="button" onclick="removeDateRangeRow(this)" class="text-rose-500 hover:text-rose-700 text-[10px] font-bold flex items-center gap-0.5">
+            <i data-lucide="trash-2" class="w-3 h-3"></i>
+            <span>Hapus</span>
+          </button>
+        </div>
+        <div class="grid grid-cols-2 gap-2.5">
+          <div>
+            <label class="block text-[10px] text-slate-500 mb-0.5">Tanggal Mulai *</label>
+            <input type="date" value="${startDate}" required onchange="syncRowEndDate(this)" class="range-start-input w-full px-2.5 py-1.5 border border-slate-300 rounded-lg font-normal bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none text-xs">
+          </div>
+          <div>
+            <label class="block text-[10px] text-slate-500 mb-0.5">Tanggal Selesai *</label>
+            <input type="date" value="${endDate || startDate}" required class="range-end-input w-full px-2.5 py-1.5 border border-slate-300 rounded-lg font-normal bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none text-xs">
+          </div>
+        </div>
+      `;
+      container.appendChild(row);
+      lucide.createIcons();
+    }
+
+    function removeDateRangeRow(btn) {
+      const row = btn.closest('.date-range-row');
+      if (row) row.remove();
+      const rows = document.querySelectorAll('#date-ranges-container .date-range-row');
+      rows.forEach((r, idx) => {
+        const titleSpan = r.querySelector('span.text-slate-600');
+        if (titleSpan) titleSpan.innerHTML = `<i data-lucide="calendar" class="w-3 h-3 text-emerald-600"></i><span>Jadwal ${idx + 1}</span>`;
+      });
+      lucide.createIcons();
+    }
+
+    function syncRowEndDate(startInput) {
+      const row = startInput.closest('.date-range-row');
+      if (!row) return;
+      const endInput = row.querySelector('.range-end-input');
+      if (endInput && (!endInput.value || endInput.value < startInput.value)) {
+        endInput.value = startInput.value;
+      }
+    }
+
+    function resetDateRanges() {
+      const container = document.getElementById('date-ranges-container');
+      if (!container) return;
+      const rows = container.querySelectorAll('.date-range-row');
+      rows.forEach((r, idx) => {
+        if (idx > 0) r.remove();
+      });
+      const firstStart = document.getElementById('event-start-date');
+      const firstEnd = document.getElementById('event-end-date');
+      if (firstStart) firstStart.value = '';
+      if (firstEnd) firstEnd.value = '';
+    }
+
     function openEventModal(initialData = null) {
       const modal = document.getElementById('modal-event');
       const form = document.getElementById('form-event');
@@ -1575,6 +1665,7 @@
       form.reset();
       document.getElementById('event-id').value = '';
       populateCategoryDropdown();
+      resetDateRanges();
 
       if (initialData && initialData.id) {
         title.innerHTML = `<i data-lucide="edit-3" class="w-4 h-4 text-emerald-600"></i><span>Edit Agenda Kaldik</span>`;
@@ -1590,7 +1681,7 @@
         btnDelete.classList.add('hidden');
         if (initialData && initialData.start_date) {
           document.getElementById('event-start-date').value = initialData.start_date;
-          document.getElementById('event-end-date').value = initialData.end_date;
+          document.getElementById('event-end-date').value = initialData.end_date || initialData.start_date;
         }
       }
 
@@ -1614,28 +1705,52 @@
       e.preventDefault();
       const id = document.getElementById('event-id').value;
       const title = document.getElementById('event-title').value.trim();
-      const start_date = document.getElementById('event-start-date').value;
-      const end_date = document.getElementById('event-end-date').value;
       const category = document.getElementById('event-category').value;
       const description = document.getElementById('event-description').value.trim();
 
-      if (end_date < start_date) {
-        showToast("Tanggal selesai tidak boleh mendahului tanggal mulai", "error");
+      const rows = document.querySelectorAll('#date-ranges-container .date-range-row');
+      const dateRanges = [];
+
+      for (const row of rows) {
+        const startInput = row.querySelector('.range-start-input');
+        const endInput = row.querySelector('.range-end-input');
+        const start_date = startInput ? startInput.value : '';
+        const end_date = endInput ? endInput.value : '';
+
+        if (!start_date || !end_date) {
+          showToast("Semua baris tanggal harus diisi lengkap", "error");
+          return;
+        }
+
+        if (end_date < start_date) {
+          showToast(`Tanggal selesai (${end_date}) tidak boleh mendahului tanggal mulai (${start_date})`, "error");
+          return;
+        }
+
+        dateRanges.push({ start_date, end_date });
+      }
+
+      if (dateRanges.length === 0) {
+        showToast("Mohon masukkan minimal satu rentang tanggal", "error");
         return;
       }
 
-      await DataService.saveEvent({
-        id: id || undefined,
-        title,
-        start_date,
-        end_date,
-        category,
-        description
-      });
+      for (let i = 0; i < dateRanges.length; i++) {
+        const range = dateRanges[i];
+        const eventId = (i === 0 && id) ? id : ('id_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5));
+        await DataService.saveEvent({
+          id: eventId,
+          title,
+          start_date: range.start_date,
+          end_date: range.end_date,
+          category,
+          description
+        });
+      }
 
       closeEventModal();
       renderCalendar();
-      showToast(id ? "Agenda berhasil diperbarui" : "Agenda berhasil disimpan", "success");
+      showToast(dateRanges.length > 1 ? `${dateRanges.length} jadwal agenda berhasil disimpan` : (id ? "Agenda berhasil diperbarui" : "Agenda berhasil disimpan"), "success");
     }
 
     async function deleteCurrentEvent() {
