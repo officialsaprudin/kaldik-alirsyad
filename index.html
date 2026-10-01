@@ -20,6 +20,9 @@
   <!-- Supabase JS SDK v2 CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
+  <!-- PDF.js Engine CDN untuk Pembaca Dokumen di HP & Laptop -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -980,6 +983,46 @@
 
       <div class="px-6 py-3.5 border-t border-slate-100 flex items-center justify-end bg-slate-50/70">
         <button type="button" onclick="closeAttachmentModal()" class="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold text-xs transition">
+          Tutup
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Penampil Dokumen Acuan Langsung di Layar HP & Laptop -->
+  <div id="modal-doc-viewer" class="no-print fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-xs hidden items-center justify-center p-2 sm:p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full h-[92vh] flex flex-col overflow-hidden border border-slate-200">
+      <!-- Header Penampil Dokumen -->
+      <div class="px-4 py-3 border-b border-slate-200 bg-slate-50/90 flex items-center justify-between shrink-0">
+        <div class="flex items-center space-x-2.5 min-w-0 pr-2">
+          <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+            <i data-lucide="file-text" class="w-4 h-4"></i>
+          </div>
+          <div class="min-w-0">
+            <h4 id="doc-viewer-title" class="font-bold text-xs sm:text-sm text-slate-900 truncate">Pratinjau Dokumen</h4>
+            <p id="doc-viewer-subtitle" class="text-[10px] text-slate-500 truncate">Dokumen Acuan Kaldik</p>
+          </div>
+        </div>
+        <div class="flex items-center space-x-1.5 shrink-0">
+          <button type="button" id="btn-doc-download" class="px-2.5 py-1.5 text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl flex items-center gap-1 shadow-2xs transition">
+            <i data-lucide="download" class="w-3.5 h-3.5 text-blue-600"></i>
+            <span class="hidden sm:inline">Unduh</span>
+          </button>
+          <button type="button" onclick="closeDocViewerModal()" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg transition">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Area Tampilan Isi Dokumen Acuan -->
+      <div id="doc-viewer-body" class="flex-1 overflow-y-auto p-2 sm:p-4 bg-slate-100/70 flex flex-col items-center custom-scrollbar">
+        <!-- Kanvas PDF atau Gambar diinjeksi secara dinamis -->
+      </div>
+      
+      <!-- Footer Info Halaman Dokumen -->
+      <div id="doc-viewer-footer" class="px-4 py-2 bg-white border-t border-slate-200 flex items-center justify-between text-xs text-slate-500 shrink-0">
+        <span id="doc-viewer-page-count" class="text-[11px] font-medium text-slate-600">Memuat dokumen...</span>
+        <button type="button" onclick="closeDocViewerModal()" class="px-4 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition">
           Tutup
         </button>
       </div>
@@ -2163,7 +2206,7 @@
         const m = parseInt(parts[1], 10) - 1;
         const d = parseInt(parts[2], 10);
         const mName = INDO_MONTHS[m]?.name || '';
-        showToast(`Tidak ada agenda pada ${d} ${mName} ${y}. Ketuk 2x untuk menambah agenda.`, 'info');
+        showToast(`Tidak ada agenda pada ${d} ${mName} ${y}.`, 'info');
       }
     }
 
@@ -2403,31 +2446,180 @@
       lucide.createIcons();
     }
 
-    function openAttachmentFile(id) {
+    function dataURItoBlob(dataURI) {
+      try {
+        const parts = dataURI.split(',');
+        const mimeMatch = parts[0].match(/:(.*?);/);
+        const mime = mimeMatch ? mimeMatch[1] : 'application/pdf';
+        const byteString = atob(parts[1]);
+        const ab = new ArrayBuffer(byteString.length);
+        const ia = new Uint8Array(ab);
+        for (let i = 0; i < byteString.length; i++) {
+          ia[i] = byteString.charCodeAt(i);
+        }
+        return new Blob([ab], { type: mime });
+      } catch (e) {
+        console.error("Gagal konversi DataURI ke Blob:", e);
+        return null;
+      }
+    }
+
+    function closeDocViewerModal() {
+      const modal = document.getElementById('modal-doc-viewer');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+      const body = document.getElementById('doc-viewer-body');
+      if (body) body.innerHTML = '';
+    }
+
+    async function openAttachmentFile(id) {
       const item = AppState.attachments.find(a => a.id === id);
       if (!item || !item.fileData) {
         showToast("Berkas lampiran tidak ditemukan", "error");
         return;
       }
 
+      // 1. Tautan Web Eksternal (Google Drive / Website Kemenag & Dinas)
       if (item.fileData.startsWith('http://') || item.fileData.startsWith('https://')) {
         window.open(item.fileData, '_blank');
-      } else {
-        // Base64 file preview
-        const win = window.open();
-        if (win) {
-          if (item.fileData.startsWith('data:application/pdf')) {
-            win.document.write(`<iframe src="${item.fileData}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
-          } else if (item.fileData.startsWith('data:image/')) {
-            win.document.write(`<div style="display:flex;justify-content:center;align-items:center;min-height:100vh;background:#0f172a;"><img src="${item.fileData}" style="max-width:100%;max-height:95vh;object-fit:contain;"></div>`);
-          } else {
+        return;
+      }
+
+      // 2. Berkas Dokumen Base64 / PDF / Gambar: Buka di Modal Penampil Dokumen HP & Laptop
+      const modal = document.getElementById('modal-doc-viewer');
+      const title = document.getElementById('doc-viewer-title');
+      const subtitle = document.getElementById('doc-viewer-subtitle');
+      const body = document.getElementById('doc-viewer-body');
+      const pageCount = document.getElementById('doc-viewer-page-count');
+      const btnDownload = document.getElementById('btn-doc-download');
+
+      if (title) title.innerText = item.title || 'Dokumen Acuan';
+      if (subtitle) subtitle.innerText = `${item.source} • ${item.fileName || 'Dokumen'}`;
+      if (pageCount) pageCount.innerText = 'Memuat dokumen...';
+
+      // Konfigurasi tombol unduh langsung
+      if (btnDownload) {
+        btnDownload.onclick = () => {
+          const blob = dataURItoBlob(item.fileData);
+          if (blob) {
+            const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = item.fileData;
-            a.download = item.fileName || 'dokumen_kaldik';
+            a.href = url;
+            a.download = item.fileName || 'Dokumen_Acuan_Kaldik.pdf';
+            document.body.appendChild(a);
             a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 15000);
+            showToast("Mengunduh berkas ke perangkat...", "info");
+          }
+        };
+      }
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      body.innerHTML = `
+        <div class="flex flex-col items-center justify-center p-12 text-slate-500 space-y-3">
+          <div class="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <p class="text-xs font-semibold">Sedang merender dokumen untuk layar perangkat...</p>
+        </div>
+      `;
+      lucide.createIcons();
+
+      const isImage = item.fileData.startsWith('data:image/') || (item.fileName && /\.(png|jpe?g|webp|gif|svg)$/i.test(item.fileName));
+
+      // Jika berkas berupa gambar: tampilkan langsung
+      if (isImage) {
+        body.innerHTML = `
+          <div class="w-full flex items-center justify-center p-2">
+            <img src="${item.fileData}" class="max-w-full h-auto object-contain rounded-xl shadow-md border border-slate-200" alt="${item.title}">
+          </div>
+        `;
+        if (pageCount) pageCount.innerText = 'Dokumen Gambar (1 Halaman)';
+        return;
+      }
+
+      // Jika berkas berupa PDF: Render halaman ke elemen Canvas dengan PDF.js
+      try {
+        const parts = item.fileData.split(',');
+        const base64Str = parts[1] || parts[0];
+        const binaryStr = atob(base64Str);
+        const len = binaryStr.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          bytes[i] = binaryStr.charCodeAt(i);
+        }
+
+        if (typeof pdfjsLib !== 'undefined') {
+          pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+          
+          const loadingTask = pdfjsLib.getDocument({ data: bytes });
+          const pdfDoc = await loadingTask.promise;
+          
+          body.innerHTML = '';
+          const numPages = pdfDoc.numPages;
+          if (pageCount) pageCount.innerText = `Total: ${numPages} Halaman Dokumen`;
+
+          // Hitung lebar layar agar tampilan pas dan nyaman dibaca di HP
+          const containerWidth = body.clientWidth - 24 || window.innerWidth - 32;
+
+          for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+            const page = await pdfDoc.getPage(pageNum);
+            const originalViewport = page.getViewport({ scale: 1 });
+            const scale = Math.min(2.0, (containerWidth / originalViewport.width) * 1.5);
+            const viewport = page.getViewport({ scale: scale });
+
+            const pageWrap = document.createElement('div');
+            pageWrap.className = 'w-full flex flex-col items-center mb-4';
+
+            const pageLabel = document.createElement('span');
+            pageLabel.className = 'text-[10px] font-bold text-slate-400 mb-1.5 self-start sm:self-center';
+            pageLabel.innerText = `Halaman ${pageNum} dari ${numPages}`;
+
+            const canvas = document.createElement('canvas');
+            canvas.className = 'max-w-full rounded-xl shadow-md border border-slate-200 bg-white';
+            const context = canvas.getContext('2d');
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+
+            await page.render({ canvasContext: context, viewport: viewport }).promise;
+
+            pageWrap.appendChild(pageLabel);
+            pageWrap.appendChild(canvas);
+            body.appendChild(pageWrap);
           }
         } else {
-          showToast("Jendela pop-up terblokir peramban, izinkan pop-up untuk membuka dokumen", "info");
+          throw new Error('PDF.js belum dimuat');
+        }
+      } catch (err) {
+        console.warn('Fallback penampil PDF:', err);
+        const blob = dataURItoBlob(item.fileData);
+        if (blob) {
+          const blobUrl = URL.createObjectURL(blob);
+          body.innerHTML = `
+            <div class="w-full h-full flex flex-col items-center justify-center p-6 text-center space-y-4">
+              <div class="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                <i data-lucide="file-check" class="w-7 h-7"></i>
+              </div>
+              <div class="space-y-1">
+                <h5 class="font-bold text-sm text-slate-800">${item.title}</h5>
+                <p class="text-xs text-slate-500">${item.fileName} (${(blob.size / 1024).toFixed(1)} KB)</p>
+              </div>
+              <div class="flex flex-col sm:flex-row gap-2 pt-2">
+                <a href="${blobUrl}" target="_blank" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs shadow-sm flex items-center justify-center gap-2">
+                  <i data-lucide="external-link" class="w-4 h-4"></i>
+                  <span>Buka di Tab Baru</span>
+                </a>
+                <a href="${blobUrl}" download="${item.fileName || 'Dokumen.pdf'}" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs border border-slate-300 flex items-center justify-center gap-2">
+                  <i data-lucide="download" class="w-4 h-4"></i>
+                  <span>Simpan ke HP</span>
+                </a>
+              </div>
+            </div>
+          `;
+          if (pageCount) pageCount.innerText = 'Penampil Cadangan Aktif';
+          lucide.createIcons();
         }
       }
     }
