@@ -97,16 +97,23 @@
         gap: 3px !important;
       }
       .compact-cell {
-        height: 1.15rem !important;
-        font-size: 8px !important;
+        height: 12px !important;
+        min-height: 12px !important;
+        max-height: 12px !important;
+        font-size: 7.5px !important;
+        line-height: 1 !important;
       }
       .compact-sem-cell {
-        height: 1.25rem !important;
-        font-size: 8.5px !important;
+        height: 14px !important;
+        min-height: 14px !important;
+        max-height: 14px !important;
+        font-size: 8px !important;
+        line-height: 1 !important;
       }
       .print-semester-page {
         page-break-inside: avoid !important;
         break-inside: avoid !important;
+        box-sizing: border-box !important;
       }
     }
     .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
@@ -116,7 +123,7 @@
     @media print {
       @page {
         size: A4 landscape;
-        margin: 6mm 8mm 6mm 8mm;
+        margin: 3.5mm 5mm 3.5mm 5mm;
       }
     }
   </style>
@@ -2190,8 +2197,8 @@
 
     function generatePrintKopHTML(docTitle, isCompact = false) {
       const sc = AppState.school;
-      // Batasi tinggi logo maksimal agar KOP ringkas & seluruh 6 bulan muat dalam 1 lembar
-      const maxLogoH = isCompact ? 30 : 38;
+      // Batasi tinggi logo KOP agar tidak memakan sepertiga halaman
+      const maxLogoH = isCompact ? 24 : 30;
       const sizeKiri = Math.min(sc.logoKiriSize || 55, maxLogoH);
       const sizeKanan = Math.min(sc.logoKananSize || 55, maxLogoH);
 
@@ -2204,17 +2211,17 @@
         : `<div style="height:${sizeKanan}px; width:${sizeKanan}px;"></div>`;
 
       return `
-        <div class="print-avoid-break border-b-2 border-slate-900 pb-1 mb-1.5 text-center">
+        <div class="print-avoid-break border-b border-black pb-0.5 mb-1 text-center">
           <div class="flex items-center justify-between px-1">
             <div class="flex items-center justify-start shrink-0" style="min-width:${sizeKiri}px;">
               ${logoKiri}
             </div>
-            <div class="flex-1 text-center px-2">
-              <h2 class="text-[9px] font-bold uppercase tracking-wider text-slate-700 leading-tight">${sc.instansi}</h2>
-              <h1 class="${isCompact ? 'text-xs' : 'text-sm'} font-black uppercase text-slate-900 leading-tight">${sc.name}</h1>
-              <p class="text-[8px] text-slate-600 leading-tight">${sc.address} ${sc.npsn ? `- NPSN: ${sc.npsn}` : ''}</p>
-              <div class="mt-0.5 inline-block border-t border-slate-800 px-3 pt-0.5">
-                <span class="${isCompact ? 'text-[8.5px]' : 'text-[9.5px]'} font-extrabold tracking-wide uppercase text-slate-900 whitespace-nowrap">${docTitle}</span>
+            <div class="flex-1 text-center px-1.5 leading-tight">
+              <h2 class="text-[8px] font-bold uppercase tracking-wider text-slate-700 leading-none">${sc.instansi}</h2>
+              <h1 class="${isCompact ? 'text-[11px]' : 'text-xs'} font-black uppercase text-slate-900 leading-tight mt-0.5">${sc.name}</h1>
+              <p class="text-[7.5px] text-slate-600 leading-tight">${sc.address} ${sc.npsn ? `- NPSN: ${sc.npsn}` : ''}</p>
+              <div class="inline-block border-t border-slate-700 px-2 mt-0.5">
+                <span class="${isCompact ? 'text-[7.5px]' : 'text-[8.5px]'} font-extrabold tracking-wide uppercase text-slate-900 whitespace-nowrap">${docTitle}</span>
               </div>
             </div>
             <div class="flex items-center justify-end shrink-0" style="min-width:${sizeKanan}px;">
@@ -2232,13 +2239,13 @@
       const headerColor = m.semester === 'gasal' ? 'bg-slate-900 text-white' : 'bg-emerald-800 text-white';
 
       let html = `
-        <div class="print-avoid-break border border-slate-300 rounded-lg overflow-hidden bg-white">
-          <div class="${headerColor} ${isCompact ? 'px-2 py-0.5 text-[8.5px]' : 'px-2 py-0.5 text-[9px]'} flex items-center justify-between font-bold leading-tight">
+        <div class="print-avoid-break border border-slate-300 rounded overflow-hidden bg-white">
+          <div class="${headerColor} px-1.5 py-0.5 flex items-center justify-between font-bold leading-none ${isCompact ? 'text-[7.5px]' : 'text-[8.5px]'}">
             <span>${m.name.toUpperCase()} ${actualYear}</span>
-            <span class="text-[7.5px] font-normal opacity-80 uppercase">${m.semester}</span>
+            <span class="text-[7px] font-normal opacity-80 uppercase">${m.semester}</span>
           </div>
-          <div class="${isCompact ? 'p-0.5' : 'p-1'}">
-            <div class="grid grid-cols-7 gap-0.5 text-center ${isCompact ? 'text-[7.5px] pb-0.5 mb-0.5' : 'text-[8px] pb-0.5 mb-0.5'} font-bold text-slate-500 border-b border-slate-100">
+          <div class="p-0.5">
+            <div class="grid grid-cols-7 gap-0.5 text-center text-[7.5px] font-bold text-slate-500 border-b border-slate-200 pb-0.5 mb-0.5 leading-none">
               ${dayHeaders.map((dh, idx) => `<span class="${idx === 0 ? 'text-red-500' : ''}">${dh}</span>`).join('')}
             </div>
             <div class="grid grid-cols-7 gap-0.5 text-center">
@@ -2255,7 +2262,7 @@
         const isFriday = currentDayOfWeek === 5;
         const event = getEventForDate(dateStr);
 
-        let cellClass = `${isCompact ? 'compact-cell' : 'compact-sem-cell'} w-full flex items-center justify-center rounded font-semibold text-[8.5px] `;
+        let cellClass = `${isCompact ? 'compact-cell' : 'compact-sem-cell'} w-full flex items-center justify-center rounded font-semibold text-[8px] leading-none `;
         let customStyle = "";
         let printLogoHTML = '';
 
@@ -2294,20 +2301,20 @@
     function generatePrintSignatureHTML(semesterText, isCompact = false) {
       const sc = AppState.school;
       return `
-        <div class="print-avoid-break mt-1.5 pt-1 border-t border-slate-300 text-[8.5px] leading-tight">
-          <div class="grid grid-cols-3 gap-2">
+        <div class="print-avoid-break mt-1 pt-0.5 border-t border-slate-300 text-[8px] leading-tight">
+          <div class="grid grid-cols-3 gap-2 items-start">
             <div class="col-span-2">
-              <h5 class="font-bold uppercase text-[8px] mb-0.5">CATATAN KHUSUS MADRASAH (${semesterText.toUpperCase()}):</h5>
-              <ol class="list-decimal pl-3 space-y-0.2 text-[8px] text-slate-700">
+              <h5 class="font-bold uppercase text-[7.5px] mb-0.5">CATATAN KHUSUS MADRASAH (${semesterText.toUpperCase()}):</h5>
+              <ol class="list-decimal pl-3 space-y-0.2 text-[7.5px] text-slate-700 leading-tight">
                 <li>Hari Efektif Belajar (HEB) tidak termasuk hari libur resmi dan cuti keagamaan.</li>
                 <li>Jadwal asesmen/ujian dapat disesuaikan dengan edaran resmi Kemenag / Disdik.</li>
                 <li>Rencana Pekan Efektif (RPE) semester berjalan mengacu pedoman standar kurikulum aktif.</li>
               </ol>
             </div>
-            <div class="text-center">
+            <div class="text-center text-[7.5px] leading-tight">
               <p>${sc.city}, ${sc.docDate}</p>
               <p class="font-semibold">Kepala Madrasah / Sekolah,</p>
-              <div class="${isCompact ? 'h-6' : 'h-8'}"></div>
+              <div class="h-5"></div>
               <p class="font-bold underline uppercase">${sc.principal}</p>
               <p>NIP. ${sc.principalNip}</p>
             </div>
@@ -2384,7 +2391,7 @@
       const includeTable = document.getElementById('export-include-table')?.checked ?? true;
 
       const dynamicStyle = document.getElementById('dynamic-print-page-style');
-      const pageMargin = orientation === 'landscape' ? '4.5mm 6mm 4.5mm 6mm' : '5mm 6mm 5mm 6mm';
+      const pageMargin = '3.5mm 5mm 3.5mm 5mm';
       dynamicStyle.innerHTML = `
         @media print {
           @page {
