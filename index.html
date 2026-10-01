@@ -1166,7 +1166,14 @@
           let tooltip = `${day} ${m.name} ${actualYear}`;
           let logoBadgeHTML = '';
 
-          if (event) {
+          // Hari Minggu tetap menjadi merah meskipun dilewati rentang tanggal agenda
+          if (isSunday) {
+            cellClass += "text-red-600 bg-red-50/70 hover:bg-red-100 ";
+            if (event) {
+              const cat = AppState.categories[event.category] || { label: 'Agenda', color: '#059669', isHoliday: false };
+              tooltip += `: ${event.title} (${cat.label}) [Hari Libur Minggu]`;
+            }
+          } else if (event) {
             const cat = AppState.categories[event.category] || { label: 'Agenda', color: '#059669', isHoliday: false };
             const contrast = getContrastTextColor(cat.color);
             customStyle = `background-color: ${cat.color} !important; color: ${contrast} !important;`;
@@ -1175,8 +1182,6 @@
             if (cat.logo) {
               logoBadgeHTML = renderCategoryLogoHTML(cat.logo, false);
             }
-          } else if (isSunday) {
-            cellClass += "text-red-600 bg-red-50/70 hover:bg-red-100 ";
           } else if (isFriday) {
             cellClass += "text-emerald-700 bg-emerald-50/40 hover:bg-emerald-100 ";
           } else {
@@ -1189,7 +1194,7 @@
                 <span>${day}</span>
                 ${logoBadgeHTML}
               </div>
-              ${event && !logoBadgeHTML ? `<span class="absolute bottom-0.5 w-1 h-1 bg-white/90 rounded-full"></span>` : ''}
+              ${event && !isSunday && !logoBadgeHTML ? `<span class="absolute bottom-0.5 w-1 h-1 bg-white/90 rounded-full"></span>` : ''}
             </div>
           `;
         }
@@ -1221,11 +1226,14 @@
         for (let d = 1; d <= totalDays; d++) {
           const dObj = new Date(actualYear, m.monthIndex, d);
           const dStr = dateToString(actualYear, m.monthIndex, d);
-          if (dObj.getDay() === 0) sundayCount++;
-          const ev = getEventForDate(dStr);
-          if (ev) {
-            const cat = AppState.categories[ev.category];
-            if (cat && cat.isHoliday) officialHolidayDays++;
+          if (dObj.getDay() === 0) {
+            sundayCount++;
+          } else {
+            const ev = getEventForDate(dStr);
+            if (ev) {
+              const cat = AppState.categories[ev.category];
+              if (cat && cat.isHoliday) officialHolidayDays++;
+            }
           }
         }
       });
@@ -2241,13 +2249,14 @@
         let customStyle = "";
         let printLogoHTML = '';
 
-        if (event) {
+        // Pada cetak dokumen A4, Hari Minggu tetap merah meskipun dilewati rentang tanggal agenda
+        if (isSunday) {
+          cellClass += "text-red-600 bg-red-50/60 font-bold ";
+        } else if (event) {
           const cat = AppState.categories[event.category] || { label: 'Agenda', color: '#059669' };
           const contrast = getContrastTextColor(cat.color);
           customStyle = `background-color: ${cat.color} !important; color: ${contrast} !important; font-weight: bold;`;
           if (cat.logo) printLogoHTML = renderCategoryLogoHTML(cat.logo, true);
-        } else if (isSunday) {
-          cellClass += "text-red-600 bg-red-50/60 font-bold ";
         } else if (isFriday) {
           cellClass += "text-emerald-700 bg-emerald-50/30 font-medium ";
         } else {
