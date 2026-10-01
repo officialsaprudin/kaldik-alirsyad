@@ -1054,12 +1054,21 @@
       logoKananSize: 55
     };
 
+    function getStoredJSON(key, defaultVal) {
+      try {
+        const item = localStorage.getItem(key);
+        return item ? JSON.parse(item) : defaultVal;
+      } catch (err) {
+        return defaultVal;
+      }
+    }
+
     const AppState = {
       currentSemester: localStorage.getItem('kaldik_active_sem') || 'full',
-      school: JSON.parse(localStorage.getItem('kaldik_school')) || DEFAULT_SCHOOL,
-      events: JSON.parse(localStorage.getItem('kaldik_events')) || [],
-      categories: JSON.parse(localStorage.getItem('kaldik_categories')) || DEFAULT_CATEGORIES,
-      attachments: JSON.parse(localStorage.getItem('kaldik_attachments')) || [],
+      school: Object.assign({}, DEFAULT_SCHOOL, getStoredJSON('kaldik_school', {})),
+      events: getStoredJSON('kaldik_events', []),
+      categories: Object.assign({}, DEFAULT_CATEGORIES, getStoredJSON('kaldik_categories', {})),
+      attachments: getStoredJSON('kaldik_attachments', []),
       
       saveSchool(newSchool) {
         this.school = newSchool;
@@ -2670,6 +2679,26 @@
       reader.readAsDataURL(file);
     }
 
+    function updateLogoPreview(type, url) {
+      const isKemen = type === 'kementerian';
+      const imgId = isKemen ? 'preview-logo-kemen-img' : 'preview-logo-sekolah-img';
+      const iconId = isKemen ? 'preview-logo-kemen-icon' : 'preview-logo-sekolah-icon';
+      const img = document.getElementById(imgId);
+      const icon = document.getElementById(iconId);
+
+      if (!img) return;
+
+      if (url && url.trim()) {
+        img.src = url.trim();
+        img.classList.remove('hidden');
+        if (icon) icon.classList.add('hidden');
+      } else {
+        img.src = '';
+        img.classList.add('hidden');
+        if (icon) icon.classList.remove('hidden');
+      }
+    }
+
     function setPresetLogo(presetKey) {
       const url = PRESET_LOGOS[presetKey];
       if (!url) return;
@@ -2680,6 +2709,55 @@
     function clearLogo(type) {
       document.getElementById(`school-logo-${type}`).value = '';
       updateLogoPreview(type, '');
+    }
+
+    function openSchoolModal() {
+      const sc = AppState.school;
+      const setVal = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.value = val || '';
+      };
+      setVal('school-instansi', sc.instansi);
+      setVal('school-name', sc.name);
+      setVal('school-npsn', sc.npsn);
+      setVal('school-year', sc.year || '2026/2027');
+      setVal('school-address', sc.address);
+      setVal('school-city', sc.city || 'Banjarmasin');
+      setVal('school-doc-date', sc.docDate || '15 Juli 2026');
+      setVal('school-principal', sc.principal);
+      setVal('school-principal-nip', sc.principalNip);
+      setVal('school-logo-kementerian', sc.logoKementerian);
+      setVal('school-logo-sekolah', sc.logoSekolah);
+
+      const sizeKiri = sc.logoKiriSize || 55;
+      const sizeKanan = sc.logoKananSize || 55;
+      const rangeKiri = document.getElementById('school-logo-size-kiri');
+      const valKiri = document.getElementById('val-logo-size-kiri');
+      if (rangeKiri) rangeKiri.value = sizeKiri;
+      if (valKiri) valKiri.innerText = sizeKiri + 'px';
+
+      const rangeKanan = document.getElementById('school-logo-size-kanan');
+      const valKanan = document.getElementById('val-logo-size-kanan');
+      if (rangeKanan) rangeKanan.value = sizeKanan;
+      if (valKanan) valKanan.innerText = sizeKanan + 'px';
+
+      updateLogoPreview('kementerian', sc.logoKementerian || '');
+      updateLogoPreview('sekolah', sc.logoSekolah || '');
+
+      const modal = document.getElementById('modal-school');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+      lucide.createIcons();
+    }
+
+    function closeSchoolModal() {
+      const modal = document.getElementById('modal-school');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
     }
 
     async function handleSchoolSubmit(e) {
