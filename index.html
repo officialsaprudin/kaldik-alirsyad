@@ -170,13 +170,17 @@
         </div>
 
         <div class="hidden md:flex items-center space-x-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
+          <button id="btn-sem-current" onclick="switchSemester('current')" class="px-3.5 py-1.5 font-bold rounded-lg transition-all shadow-xs bg-white text-emerald-700 flex items-center gap-1">
+            <i data-lucide="calendar-check" class="w-3.5 h-3.5 text-emerald-600"></i>
+            <span>Bulan Ini</span>
+          </button>
           <button id="btn-sem-gasal" onclick="switchSemester('gasal')" class="px-3 py-1.5 font-semibold rounded-lg transition-all text-slate-600 hover:text-slate-900">
             Semester Gasal (Jul - Des)
           </button>
           <button id="btn-sem-genap" onclick="switchSemester('genap')" class="px-3 py-1.5 font-semibold rounded-lg transition-all text-slate-600 hover:text-slate-900">
             Semester Genap (Jan - Jun)
           </button>
-          <button id="btn-sem-full" onclick="switchSemester('full')" class="px-3.5 py-1.5 font-bold rounded-lg transition-all shadow-xs bg-white text-emerald-700">
+          <button id="btn-sem-full" onclick="switchSemester('full')" class="px-3 py-1.5 font-semibold rounded-lg transition-all text-slate-600 hover:text-slate-900">
             1 Tahun Penuh
           </button>
         </div>
@@ -212,10 +216,11 @@
   <main id="screen-main-layout" class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 print:hidden space-y-6">
     
     <!-- Mobile Pill Switcher -->
-    <div class="no-print md:hidden grid grid-cols-3 gap-1 bg-slate-200/80 p-1 rounded-xl text-xs font-bold">
+    <div class="no-print md:hidden grid grid-cols-4 gap-1 bg-slate-200/80 p-1 rounded-xl text-[11px] font-bold">
+      <button id="mob-btn-current" onclick="switchSemester('current')" class="py-1.5 rounded-lg bg-white text-emerald-700 shadow-xs">Bulan Ini</button>
       <button id="mob-btn-gasal" onclick="switchSemester('gasal')" class="py-1.5 rounded-lg text-slate-600">Gasal</button>
       <button id="mob-btn-genap" onclick="switchSemester('genap')" class="py-1.5 rounded-lg text-slate-600">Genap</button>
-      <button id="mob-btn-full" onclick="switchSemester('full')" class="py-1.5 rounded-lg bg-white text-emerald-700 shadow-xs">1 Tahun</button>
+      <button id="mob-btn-full" onclick="switchSemester('full')" class="py-1.5 rounded-lg text-slate-600">1 Tahun</button>
     </div>
 
     <!-- 4 Kartu Metrik KPI Produksi -->
@@ -1119,7 +1124,7 @@
     }
 
     const AppState = {
-      currentSemester: localStorage.getItem('kaldik_active_sem') || 'full',
+      currentSemester: localStorage.getItem('kaldik_active_sem') || 'current',
       school: Object.assign({}, DEFAULT_SCHOOL, getStoredJSON('kaldik_school', {})),
       events: getStoredJSON('kaldik_events', []),
       categories: Object.assign({}, DEFAULT_CATEGORIES, getStoredJSON('kaldik_categories', {})),
@@ -1404,6 +1409,12 @@
 
     function getVisibleMonths() {
       const sem = AppState.currentSemester;
+      if (sem === 'current') {
+        const now = new Date();
+        const currentMonthIdx = now.getMonth();
+        const found = INDO_MONTHS.find(m => m.monthIndex === currentMonthIdx);
+        return found ? [found] : [INDO_MONTHS[6]];
+      }
       if (sem === 'gasal') return INDO_MONTHS.filter(m => m.semester === 'gasal');
       if (sem === 'genap') return INDO_MONTHS.filter(m => m.semester === 'genap');
       return [
@@ -1436,7 +1447,9 @@
         const totalDays = new Date(actualYear, m.monthIndex + 1, 0).getDate();
 
         const card = document.createElement('div');
-        card.className = "month-card border border-slate-200/90 rounded-2xl overflow-hidden bg-white shadow-2xs";
+        card.className = visibleMonths.length === 1
+          ? "month-card border border-slate-200/90 rounded-2xl overflow-hidden bg-white shadow-2xs md:col-span-2 xl:col-span-3 max-w-lg mx-auto w-full"
+          : "month-card border border-slate-200/90 rounded-2xl overflow-hidden bg-white shadow-2xs";
 
         let headerColor = m.semester === 'gasal' ? 'bg-slate-900 text-white' : 'bg-emerald-800 text-white';
         
@@ -1549,9 +1562,13 @@
       
       const semLabel = AppState.currentSemester === 'gasal' 
         ? 'Gasal (Juli - Des)' 
-        : (AppState.currentSemester === 'genap' ? 'Genap (Jan - Jun)' : '1 Tahun Ajaran Penuh');
+        : (AppState.currentSemester === 'genap' 
+            ? 'Genap (Jan - Jun)' 
+            : (AppState.currentSemester === 'current'
+                ? `Bulan Ini (${visibleMonths[0]?.name || 'Aktif'})`
+                : '1 Tahun Ajaran Penuh'));
       document.getElementById('stat-semester-label').innerText = semLabel;
-      document.getElementById('calendar-view-heading').innerText = `Grid Kalender - Semester ${semLabel}`;
+      document.getElementById('calendar-view-heading').innerText = `Grid Kalender - ${semLabel}`;
 
       const relevantEvents = AppState.events.filter(ev => {
         const start = new Date(ev.start_date);
@@ -2153,24 +2170,28 @@
       AppState.setSemester(sem);
 
       const btns = {
+        current: document.getElementById('btn-sem-current'),
         gasal: document.getElementById('btn-sem-gasal'),
         genap: document.getElementById('btn-sem-genap'),
         full: document.getElementById('btn-sem-full')
       };
       Object.keys(btns).forEach(key => {
+        if (!btns[key]) return;
         if (key === sem) {
-          btns[key].className = "px-3.5 py-1.5 font-bold rounded-lg transition-all shadow-xs bg-white text-emerald-700";
+          btns[key].className = "px-3.5 py-1.5 font-bold rounded-lg transition-all shadow-xs bg-white text-emerald-700 flex items-center gap-1";
         } else {
-          btns[key].className = "px-3 py-1.5 font-semibold rounded-lg transition-all text-slate-600 hover:text-slate-900";
+          btns[key].className = "px-3 py-1.5 font-semibold rounded-lg transition-all text-slate-600 hover:text-slate-900 flex items-center gap-1";
         }
       });
 
       const mobBtns = {
+        current: document.getElementById('mob-btn-current'),
         gasal: document.getElementById('mob-btn-gasal'),
         genap: document.getElementById('mob-btn-genap'),
         full: document.getElementById('mob-btn-full')
       };
       Object.keys(mobBtns).forEach(key => {
+        if (!mobBtns[key]) return;
         if (key === sem) {
           mobBtns[key].className = "py-1.5 rounded-lg bg-white text-emerald-700 shadow-xs";
         } else {
@@ -2179,6 +2200,7 @@
       });
 
       renderCalendar();
+      lucide.createIcons();
     }
 
     let dayClickTimer = null;
@@ -3494,7 +3516,7 @@
       lucide.createIcons();
       renderSchoolIdentity();
       renderLegend();
-      renderCalendar();
+      switchSemester(AppState.currentSemester);
       renderAttachmentList();
       DataService.syncAll();
       initSupabaseRealtime();
