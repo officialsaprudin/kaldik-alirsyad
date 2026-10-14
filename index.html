@@ -3049,17 +3049,21 @@
 
     function generatePrintKopHTML(docTitle, isCompact = false) {
       const sc = AppState.school;
-      // Batasi tinggi logo KOP agar tidak memakan sepertiga halaman
-      const maxLogoH = isCompact ? 24 : 30;
-      const sizeKiri = Math.min(sc.logoKiriSize || 55, maxLogoH);
-      const sizeKanan = Math.min(sc.logoKananSize || 55, maxLogoH);
+      // Gunakan ukuran slider pengguna secara proporsional dan aman
+      // Batas maksimum aman 75px konsisten di semua mode agar logo tampil besar dan gagah
+      // namun tidak pernah mendorong kalender keluar dari 1 lembar A4
+      const maxSafeH = 75;
+      const rawKiri = parseInt(sc.logoKiriSize, 10) || 55;
+      const rawKanan = parseInt(sc.logoKananSize, 10) || 55;
+      const sizeKiri = Math.min(Math.max(rawKiri, 30), maxSafeH);
+      const sizeKanan = Math.min(Math.max(rawKanan, 30), maxSafeH);
 
       const logoKiri = sc.logoKementerian
-        ? `<img src="${sc.logoKementerian}" style="height:${sizeKiri}px; max-width:${Math.round(sizeKiri * 1.5)}px; object-fit:contain;" alt="Logo Kementerian">`
+        ? `<img src="${sc.logoKementerian}" style="height:${sizeKiri}px; max-width:${Math.round(sizeKiri * 1.5)}px; object-fit:contain; display:block;" alt="Logo Kementerian">`
         : `<div style="height:${sizeKiri}px; width:${sizeKiri}px;"></div>`;
 
       const logoKanan = sc.logoSekolah
-        ? `<img src="${sc.logoSekolah}" style="height:${sizeKanan}px; max-width:${Math.round(sizeKanan * 1.5)}px; object-fit:contain;" alt="Logo Madrasah">`
+        ? `<img src="${sc.logoSekolah}" style="height:${sizeKanan}px; max-width:${Math.round(sizeKanan * 1.5)}px; object-fit:contain; display:block;" alt="Logo Madrasah">`
         : `<div style="height:${sizeKanan}px; width:${sizeKanan}px;"></div>`;
 
       return `
