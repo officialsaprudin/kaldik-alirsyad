@@ -133,6 +133,19 @@
     }
     .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    @keyframes pulseGlow {
+      0%, 100% {
+        box-shadow: 0 0 8px 2px rgba(16, 185, 129, 0.65), 0 0 0 2px #10b981;
+      }
+      50% {
+        box-shadow: 0 0 16px 4px rgba(16, 185, 129, 0.9), 0 0 0 2.5px #059669;
+      }
+    }
+    .today-glow {
+      animation: pulseGlow 2.5s infinite ease-in-out;
+      position: relative;
+      z-index: 10;
+    }
   </style>
   <style id="dynamic-print-page-style">
     @media print {
@@ -1440,6 +1453,9 @@
       const baseYear = getBaseYear();
       const visibleMonths = getVisibleMonths();
       const dayHeaders = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+      const now = new Date();
+      const todayStr = dateToString(now.getFullYear(), now.getMonth(), now.getDate());
+      const isSingleMonth = visibleMonths.length === 1;
 
       visibleMonths.forEach(m => {
         const actualYear = baseYear + m.yearOffset;
@@ -1447,26 +1463,26 @@
         const totalDays = new Date(actualYear, m.monthIndex + 1, 0).getDate();
 
         const card = document.createElement('div');
-        card.className = visibleMonths.length === 1
+        card.className = isSingleMonth
           ? "month-card border border-slate-200/90 rounded-2xl overflow-hidden bg-white shadow-2xs md:col-span-2 xl:col-span-3 max-w-lg mx-auto w-full"
           : "month-card border border-slate-200/90 rounded-2xl overflow-hidden bg-white shadow-2xs";
 
         let headerColor = m.semester === 'gasal' ? 'bg-slate-900 text-white' : 'bg-emerald-800 text-white';
         
         let html = `
-          <div class="${headerColor} px-3.5 py-1.5 flex items-center justify-between text-xs font-bold tracking-wide">
+          <div class="${headerColor} ${isSingleMonth ? 'px-4 py-2 sm:py-2.5 text-xs sm:text-sm' : 'px-3.5 py-1.5 text-xs'} flex items-center justify-between font-bold tracking-wide">
             <span>${m.name.toUpperCase()} ${actualYear}</span>
-            <span class="text-[10px] font-normal opacity-80 uppercase">${m.semester}</span>
+            <span class="${isSingleMonth ? 'text-xs' : 'text-[10px]'} font-normal opacity-80 uppercase">${m.semester}</span>
           </div>
-          <div class="p-2">
-            <div class="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-slate-500 mb-1 border-b border-slate-100 pb-1">
+          <div class="${isSingleMonth ? 'p-2 sm:p-4' : 'p-2'}">
+            <div class="grid grid-cols-7 gap-1 text-center ${isSingleMonth ? 'text-[10px] sm:text-xs mb-1.5 pb-1.5' : 'text-[10px] mb-1 pb-1'} font-bold text-slate-500 border-b border-slate-100">
               ${dayHeaders.map((dh, idx) => `<span class="${idx === 0 ? 'text-red-500' : ''}">${dh}</span>`).join('')}
             </div>
             <div class="grid grid-cols-7 gap-1 text-center text-[11px]">
         `;
 
         for (let i = 0; i < firstDay; i++) {
-          html += `<div class="h-7 w-full"></div>`;
+          html += `<div class="${isSingleMonth ? 'h-7 sm:h-11 md:h-13' : 'h-7'} w-full"></div>`;
         }
 
         for (let day = 1; day <= totalDays; day++) {
@@ -1475,10 +1491,14 @@
           const isSunday = currentDayOfWeek === 0;
           const isFriday = currentDayOfWeek === 5;
           const event = getEventForDate(dateStr);
+          const isToday = dateStr === todayStr;
 
-          let cellClass = "h-7 w-full flex items-center justify-center rounded font-semibold transition cursor-pointer relative ";
+          let cellClass = isSingleMonth
+            ? "h-7 sm:h-11 md:h-13 w-full flex items-center justify-center rounded-lg font-semibold transition cursor-pointer relative text-[11px] sm:text-sm "
+            : "h-7 w-full flex items-center justify-center rounded font-semibold transition cursor-pointer relative ";
           let customStyle = "";
           let tooltip = `${day} ${m.name} ${actualYear}`;
+          if (isToday) tooltip += " • Hari Ini";
           let logoBadgeHTML = '';
 
           // Hari Minggu tetap menjadi merah meskipun dilewati rentang tanggal agenda
@@ -1501,6 +1521,13 @@
             cellClass += "text-emerald-700 bg-emerald-50/40 hover:bg-emerald-100 ";
           } else {
             cellClass += "text-slate-700 hover:bg-slate-100 ";
+          }
+
+          if (isToday) {
+            cellClass += "today-glow font-black ";
+            if (!event && !isSunday) {
+              cellClass += "bg-emerald-50/90 text-emerald-900 border border-emerald-300 ";
+            }
           }
 
           html += `
