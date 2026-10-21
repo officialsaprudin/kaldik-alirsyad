@@ -1485,6 +1485,9 @@
           html += `<div class="${isSingleMonth ? 'h-7 sm:h-11 md:h-13' : 'h-7'} w-full"></div>`;
         }
 
+        let monthSundays = 0;
+        let monthHolidays = 0;
+
         for (let day = 1; day <= totalDays; day++) {
           const dateStr = dateToString(actualYear, m.monthIndex, day);
           const currentDayOfWeek = new Date(actualYear, m.monthIndex, day).getDay();
@@ -1503,6 +1506,7 @@
 
           // Hari Minggu tetap menjadi merah meskipun dilewati rentang tanggal agenda
           if (isSunday) {
+            monthSundays++;
             cellClass += "text-red-600 bg-red-50/70 hover:bg-red-100 ";
             if (event) {
               const cat = AppState.categories[event.category] || { label: 'Agenda', color: '#059669', isHoliday: false };
@@ -1510,6 +1514,7 @@
             }
           } else if (event) {
             const cat = AppState.categories[event.category] || { label: 'Agenda', color: '#059669', isHoliday: false };
+            if (cat && cat.isHoliday) monthHolidays++;
             const contrast = getContrastTextColor(cat.color);
             customStyle = `${getCategoryBackground(cat)} color: ${contrast} !important;`;
             cellClass += "font-bold shadow-2xs hover:scale-105 ";
@@ -1541,8 +1546,21 @@
           `;
         }
 
+        const monthHeb = Math.max(0, totalDays - monthSundays - monthHolidays);
+        const monthPekan = Math.round(monthHeb / 6);
+
         html += `
             </div>
+          </div>
+          <div class="px-3 py-1.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-[10px] font-bold text-slate-600">
+            <span class="flex items-center gap-1" title="Hari Efektif Belajar bulan ini">
+              <i data-lucide="book-open" class="w-3 h-3 text-emerald-600"></i>
+              <span>HEB: <strong class="text-emerald-700">${monthHeb}</strong> hari</span>
+            </span>
+            <span class="flex items-center gap-1" title="Pekan Efektif bulan ini">
+              <i data-lucide="clock" class="w-3 h-3 text-purple-600"></i>
+              <span>Pekan: <strong class="text-purple-700">${monthPekan}</strong></span>
+            </span>
           </div>
         `;
         card.innerHTML = html;
@@ -1550,6 +1568,7 @@
       });
 
       renderKPIAndAgenda();
+      lucide.createIcons();
     }
 
     function renderKPIAndAgenda() {
@@ -3143,6 +3162,9 @@
       const dayHeaders = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
       const headerColor = m.semester === 'gasal' ? 'bg-slate-900 text-white' : 'bg-emerald-800 text-white';
 
+      let monthSundays = 0;
+      let monthHolidays = 0;
+
       let html = `
         <div class="print-avoid-break border border-slate-300 rounded overflow-hidden bg-white">
           <div class="${headerColor} px-2 py-1 flex items-center justify-between font-bold leading-none ${isCompact ? 'text-[9px]' : 'text-xs'}">
@@ -3173,9 +3195,11 @@
 
         // Pada cetak dokumen A4, Hari Minggu tetap merah meskipun dilewati rentang tanggal agenda
         if (isSunday) {
+          monthSundays++;
           cellClass += "text-red-600 bg-red-50/60 font-bold ";
         } else if (event) {
           const cat = AppState.categories[event.category] || { label: 'Agenda', color: '#059669' };
+          if (cat && cat.isHoliday) monthHolidays++;
           const contrast = getContrastTextColor(cat.color);
           customStyle = `${getCategoryBackground(cat)} color: ${contrast} !important; font-weight: bold;`;
           if (cat.logo) printLogoHTML = renderCategoryLogoHTML(cat.logo, true);
@@ -3195,8 +3219,15 @@
         `;
       }
 
+      const monthHeb = Math.max(0, totalDays - monthSundays - monthHolidays);
+      const monthPekan = Math.round(monthHeb / 6);
+
       html += `
             </div>
+          </div>
+          <div class="border-t border-slate-200 px-1.5 py-0.5 bg-slate-50 flex items-center justify-between ${isCompact ? 'text-[7px]' : 'text-[8px]'} font-bold text-slate-700 leading-none">
+            <span>HEB: <strong class="text-slate-900">${monthHeb} hari</strong></span>
+            <span>Pekan Efektif: <strong class="text-slate-900">${monthPekan}</strong></span>
           </div>
         </div>
       `;
